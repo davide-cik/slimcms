@@ -9,6 +9,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
@@ -30,6 +31,14 @@ class ManagePanelProvider extends PanelProvider
             // piani nemmeno per un errore di configurazione.
             ->authGuard('manage')
             ->login()
+            // MFA OBBLIGATORIA per tutti, senza eccezioni: chi entra qui puo'
+            // creare, sospendere e cancellare clienti interi. Le specifiche la
+            // chiedono per super-admin; qui vale anche per il supporto, perche'
+            // la differenza di ruolo non cambia la sensibilita' dell'accesso.
+            ->multiFactorAuthentication(
+                AppAuthentication::make()->recoverable(),
+                isRequired: true,
+            )
             ->path('manage')
             ->colors([
                 // Rosso ruggine, deliberatamente DIVERSO dal verde del pannello

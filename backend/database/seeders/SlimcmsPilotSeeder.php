@@ -2,7 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use App\Models\Page;
+use App\Models\Post;
+use App\Models\User;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\Tenant;
@@ -72,6 +75,39 @@ class SlimcmsPilotSeeder extends Seeder
                 'seo' => ContenutoHomeSlimcms::seo(),
             ]
         );
+
+        // Un articolo di blog reale, cosi' il pilota esercita anche il
+        // percorso Post e non solo quello Page.
+        $categoria = Category::firstOrCreate(
+            ['slug' => 'dietro-le-quinte'],
+            ['name' => 'Dietro le quinte']
+        );
+
+        $autore = User::withoutSitePivotScope()->where('email', 'davide@giansoldati.it')->first();
+
+        $articolo = Post::updateOrCreate(
+            ['slug' => 'perche-abbiamo-lasciato-wordpress'],
+            [
+                'title' => 'Perche abbiamo lasciato WordPress',
+                'author_id' => $autore?->id,
+                'excerpt' => 'Venti siti da aggiornare, plugin che si rompono a turno, e nessun modo di sapere quale sara il prossimo. La storia di come siamo arrivati a scrivere SlimCMS.',
+                'tags' => ['wordpress', 'migrazione', 'performance'],
+                'status' => 'published',
+                'publish_at' => now()->subDay(),
+                'blocks' => [[
+                    'tipo' => 'testo_ricco',
+                    'corpo' => '<p>Il problema non era WordPress in se, ma la moltiplicazione: venti installazioni separate, ognuna con i suoi aggiornamenti, i suoi plugin e i suoi orari in cui qualcosa si rompeva.</p>',
+                ]],
+                'seo' => [
+                    'meta_title' => 'Perche abbiamo lasciato WordPress — SlimCMS',
+                    'meta_description' => 'Venti siti da mantenere e nessun modo di sapere quale plugin si sarebbe rotto per primo.',
+                    'structured_summary' => "SlimCMS nasce dalla difficolta di mantenere molti mini siti WordPress separati: ogni installazione richiedeva aggiornamenti e plugin propri.",
+                    'key_facts' => ['Ogni sito WordPress separato richiede aggiornamenti indipendenti.'],
+                ],
+            ]
+        );
+
+        $articolo->categories()->syncWithoutDetaching([$categoria->id]);
 
         Site::forgetCurrent();
 

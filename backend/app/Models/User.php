@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSiteViaPivot;
+use App\Models\Concerns\HasAppMfa;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
@@ -25,9 +28,10 @@ use Illuminate\Support\Collection;
  * non dal global scope: e' il motivo per cui e' elencato in
  * TenantScopeTest::EXCLUDED_MODELS.
  */
-class User extends Authenticatable implements FilamentUser, HasTenants
+class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery, HasTenants
 {
     use BelongsToSiteViaPivot;
+    use HasAppMfa;
     use HasApiTokens;
     use HasFactory;
     use Notifiable;
@@ -48,6 +52,10 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            // Cifrati a riposo: chi legge il database non deve poter
+            // rigenerare i codici TOTP di nessuno.
+            'app_authentication_secret' => 'encrypted',
+            'app_authentication_recovery_codes' => 'encrypted:array',
         ];
     }
 

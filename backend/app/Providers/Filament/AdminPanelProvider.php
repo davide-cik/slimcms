@@ -9,8 +9,10 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use App\Http\Middleware\RichiediMfaSoloAgliAdmin;
 use App\Http\Middleware\SetCurrentSiteFromFilamentTenant;
 use App\Models\Site;
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
@@ -30,6 +32,18 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            // Chiunque puo' attivarla; e' OBBLIGATORIA per chi ha ruolo admin
+            // su almeno un sito (specifiche, punto 6 dell'MVP), perche' un
+            // admin puo' aggiungere e rimuovere altri redattori.
+            // isRequired: true serve a far REGISTRARE rotte e middleware, che
+            // Filament crea solo se la MFA risulta obbligatoria al boot.
+            // L'esenzione vera per i ruoli non amministrativi la applica
+            // RichiediMfaSoloAgliAdmin, che gira per richiesta e vede l'utente.
+            ->multiFactorAuthentication(
+                AppAuthentication::make()->recoverable(),
+                isRequired: true,
+            )
+            ->multiFactorAuthenticationRequiredMiddlewareName(RichiediMfaSoloAgliAdmin::class)
             ->colors([
                 // verde pino: lo stesso colore segnale della vetrina slimcms.it
                 'primary' => Color::hex('#0f6b4a'),

@@ -257,6 +257,39 @@ Il frontend Astro chiama l'API **solo in fase di build** (`src/lib/api.ts`). Se 
 modulo importato da un componente con `client:*`, è un errore: il visitatore riceve HTML
 statico e non deve mai toccare il backend.
 
+## Due piani, due identita', due guardie
+
+| | Control plane | Data plane |
+|---|---|---|
+| URL | `/manage` (→ `manage.slimcms.it`) | `/admin` (→ `<dominio>/admin`) |
+| Modello utente | `AdminUser` (tabella `admin_users`) | `User` (tabella `users`) |
+| Guardia | `manage` | `web` |
+| Colore | rosso ruggine | verde pino |
+| MFA | **obbligatoria per tutti** | obbligatoria per chi è `admin` su un sito |
+
+Le due tabelle utente sono separate **di proposito**: non è un ruolo in più su `users`.
+Con una tabella sola, un errore in una policy o una query dimenticata trasformerebbe un
+redattore in super-admin. Separarle rende quell'errore impossibile per costruzione.
+
+La stessa persona che amministra la piattaforma e redige contenuti ha **due account
+distinti**, anche con la stessa email.
+
+Verificato: un redattore su `/manage/tenants` finisce su `/manage/login`; un amministratore
+di piattaforma su `/admin/.../pages` finisce su `/admin/login`.
+
+### MFA: perché un middleware e non una closure
+
+Filament accetta `multiFactorAuthentication(..., isRequired: Closure)`, ma quella closure è
+valutata **al boot**, quando registra rotte e middleware (`HasComponents.php:594`), non a
+ogni richiesta: a quel punto non c'è nessun utente autenticato, quindi una closure
+per-utente restituirebbe sempre `false`, la pagina di setup non verrebbe registrata e chi
+ne ha bisogno finirebbe su una rotta inesistente.
+
+Quindi il pannello dichiara `isRequired: true` (così rotte e middleware esistono) e
+l'esenzione per i ruoli non amministrativi la applica `RichiediMfaSoloAgliAdmin`, che gira
+per richiesta. Segreto TOTP e codici di recupero sono **cifrati a riposo**
+(`'encrypted'` cast): chi legge il database non deve poter rigenerare i codici di nessuno.
+
 ## Convenzioni di codice
 
 - Segui le convenzioni Laravel standard; non introdurre astrazioni non richieste.

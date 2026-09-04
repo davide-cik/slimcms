@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasAppMfa;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,8 +19,9 @@ use Illuminate\Notifications\Notifiable;
  * di piattaforma per errore, perche' vive in un'altra tabella e usa un'altra
  * guardia di autenticazione.
  */
-class AdminUser extends Authenticatable implements FilamentUser
+class AdminUser extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery
 {
+    use HasAppMfa;
     use HasFactory;
     use Notifiable;
 
@@ -30,6 +34,8 @@ class AdminUser extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'app_authentication_secret' => 'encrypted',
+            'app_authentication_recovery_codes' => 'encrypted:array',
         ];
     }
 
