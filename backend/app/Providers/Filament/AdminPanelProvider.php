@@ -52,6 +52,7 @@ class AdminPanelProvider extends PanelProvider
             // Site, NON il Tenant: il selettore in /admin serve a passare da un
             // mini sito all'altro, che e' cio' che descrive la sezione 8 delle
             // specifiche. Con un solo sito Filament salta il selettore da solo.
+            ->favicon(asset('img/favicon-admin.svg'))
             ->tenant(Site::class, slugAttribute: 'domain')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

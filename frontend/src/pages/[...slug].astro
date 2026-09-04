@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Blocchi from '../components/blocchi/Blocchi.astro';
-import { elencoPagine, type Pagina } from '../lib/api';
+import { elencoPagine, sito, type Pagina, type Sito } from '../lib/api';
 
 /**
  * Genera staticamente TUTTE le pagine pubblicate del sito, leggendole
@@ -9,20 +9,22 @@ import { elencoPagine, type Pagina } from '../lib/api';
  * e non tocca mai il backend (specifiche, sezione 7).
  */
 export async function getStaticPaths() {
-  const pagine = await elencoPagine();
+  // Il sito si legge UNA volta e si passa a tutte le pagine: e' lo stesso per
+  // ognuna, e rileggerlo per pagina sarebbe una chiamata sprecata per nulla.
+  const [pagine, s] = await Promise.all([elencoPagine(), sito()]);
 
   return pagine.map((pagina: Pagina) => ({
     // 'home' vive alla radice, le altre al proprio slug.
     params: { slug: pagina.slug === 'home' ? undefined : pagina.slug },
-    props: { pagina },
+    props: { pagina, sito: s },
   }));
 }
 
-const { pagina } = Astro.props;
+const { pagina, sito: infoSito } = Astro.props as { pagina: Pagina; sito: Sito };
 const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
 ---
 
-<Base pagina={pagina} dominio={dominio}>
+<Base pagina={pagina} dominio={dominio} sito={infoSito}>
   <Blocchi blocchi={pagina.blocks} />
 
   {/* Il doppio registro: la firma della pagina. Quello che legge una

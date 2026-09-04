@@ -33,6 +33,7 @@ class Site extends Model implements HasMedia
         'name',
         'logo_path',
         'favicon_path',
+        'favicon_initials',
         'theme',
         'seo_defaults',
         'ssl_status',
@@ -72,6 +73,33 @@ class Site extends Model implements HasMedia
      * motivo per cui i file vivono sotto tenants/<id>/media/ e non sotto
      * la pagina che per prima li ha usati.
      */
+    /**
+     * SVG della favicon del sito.
+     *
+     * Se e' stata caricata un'immagine vince quella; altrimenti si genera
+     * dalle iniziali. Non c'e' un terzo caso "nessuna favicon": una scheda
+     * senza icona e' peggio di una generata, e generarla non costa nulla.
+     */
+    public function faviconSvg(): string
+    {
+        return app(\App\Services\GeneratoreFavicon::class)->svg($this);
+    }
+
+    public function faviconIniziali(): string
+    {
+        return app(\App\Services\GeneratoreFavicon::class)->iniziali($this);
+    }
+
+    /** URL pubblica della favicon: il file caricato, o quella generata. */
+    public function faviconUrl(): string
+    {
+        if (filled($this->favicon_path)) {
+            return $this->favicon_path;
+        }
+
+        return '/favicon.svg';
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('libreria')

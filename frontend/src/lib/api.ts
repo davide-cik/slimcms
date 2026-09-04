@@ -70,6 +70,23 @@ async function chiama<T>(percorso: string): Promise<T> {
   return risposta.json() as Promise<T>;
 }
 
+export interface Sito {
+  id: number;
+  domain: string;
+  name: string;
+  logo_path: string | null;
+  favicon_path: string | null;
+  favicon_svg: string;
+  favicon_iniziali: string;
+  theme: Record<string, unknown>;
+  seo_defaults: Record<string, unknown>;
+}
+
+export async function sito(): Promise<Sito> {
+  const { data } = await chiama<{ data: Sito }>('');
+  return data;
+}
+
 export async function elencoPagine(): Promise<Pagina[]> {
   const { data } = await chiama<{ data: Pagina[] }>('/pages');
   return data;

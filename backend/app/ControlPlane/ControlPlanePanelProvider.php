@@ -55,6 +55,9 @@ class ControlPlanePanelProvider extends PanelProvider
                 'primary' => Color::hex('#9c3d2e'),
             ])
             ->brandName('SlimCMS · Gestione')
+            // Rossa come il pannello: la scheda del browser dice a colpo d'occhio
+            // se stai amministrando la piattaforma o i contenuti di un cliente.
+            ->favicon(asset('img/favicon-manage.svg'))
             ->discoverResources(in: app_path('ControlPlane/Filament/Resources'), for: 'App\ControlPlane\Filament\Resources')
             ->discoverPages(in: app_path('ControlPlane/Filament/Pages'), for: 'App\ControlPlane\Filament\Pages')
             ->pages([

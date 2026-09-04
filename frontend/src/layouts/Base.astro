@@ -1,13 +1,14 @@
 ---
-import type { Pagina } from '../lib/api';
+import type { Pagina, Sito } from '../lib/api';
 import { grafoJsonLd } from '../lib/jsonld';
 
 interface Props {
   pagina: Pagina;
   dominio: string;
+  sito?: Sito;
 }
 
-const { pagina, dominio } = Astro.props;
+const { pagina, dominio, sito } = Astro.props;
 
 const editore = {
   '@type': 'Organization',
@@ -31,7 +32,9 @@ const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug ==
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {/* Favicon del sito: generata dalle iniziali, oppure il file che il
+        cliente ha caricato. Ogni sito ha la sua. */}
+    <link rel="icon" href={sito?.favicon_path ?? '/favicon.svg'} type="image/svg+xml" />
     <title>{pagina.seo.meta_title}</title>
     {pagina.seo.meta_description && <meta name="description" content={pagina.seo.meta_description} />}
     <link rel="canonical" href={canonico} />

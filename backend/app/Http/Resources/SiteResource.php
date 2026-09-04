@@ -15,6 +15,10 @@ class SiteResource extends JsonResource
             'name' => $this->name,
             'logo_path' => $this->logo_path,
             'favicon_path' => $this->favicon_path,
+            // L'SVG viaggia inline: e' poche centinaia di byte e cosi' Astro
+            // lo scrive come file del sito senza una richiesta in piu'.
+            'favicon_svg' => $this->faviconSvg(),
+            'favicon_iniziali' => $this->faviconIniziali(),
             'theme' => $this->theme ?? [],
             'seo_defaults' => $this->seo_defaults ?? [],
         ];

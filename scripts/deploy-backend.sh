@@ -146,6 +146,12 @@ PHP
   fi
 fi
 
+# Storico dei rilasci: l'app in produzione e' una copia senza .git, quindi
+# l'elenco va generato QUI, dal repository, e copiato nella destinazione.
+log "Storico dei rilasci"
+(cd "$REPO_ROOT/backend" && php artisan slimcms:genera-rilasci --out="$APP_DIR/rilasci.json") \
+  || printf '\033[33mATTENZIONE\033[0m: rilasci.json non generato, /rilasci restera vuota.\n'
+
 log "Verifica"
 php artisan about --only=environment 2>/dev/null | head -6
 

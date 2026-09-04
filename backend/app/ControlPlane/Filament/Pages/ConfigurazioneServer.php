@@ -26,6 +26,8 @@ class ConfigurazioneServer extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Piattaforma';
 
+    protected static ?int $navigationSort = 10;
+
     protected string $view = 'control-plane.pages.configurazione-server';
 
     /** Solo i super-admin: e' configurazione di piattaforma, non assistenza. */
