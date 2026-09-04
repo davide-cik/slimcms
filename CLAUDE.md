@@ -308,6 +308,14 @@ e infine `HTTP 200` più controllo del contenuto sul sito pubblicato.
 
 `--dry-run` fa build e verifica senza pubblicare.
 
+**Node va risolto esplicitamente, non preso dal `PATH`.** Il cron gira con un `PATH`
+minimale e trova `/usr/bin/node`, che qui è la **v12**; Astro 7 ne richiede almeno la 22.12
+e muore con `SyntaxError: Unexpected token '.'` — l'optional chaining che quel Node non sa
+leggere. È un errore che non dice nulla sulla causa reale, e ha fatto fallire tre volte le
+build accodate dal pannello mentre le stesse build lanciate a mano riuscivano, perché la
+shell interattiva ha nvm nel `PATH`. Lo script ora cerca la versione di nvm, verifica che
+sia almeno la 22 e si ferma con un messaggio esplicito se non lo è.
+
 La sitemap è generata a ogni build dai dati dell'API, quindi si aggiorna da sola a ogni
 pubblicazione. Le URL portano **sempre lo slash finale**: Astro genera `<slug>/index.html`,
 quindi il server risponde 200 solo su quella forma e 301 sull'altra. Il gate di deploy

@@ -39,6 +39,52 @@ dry_run=false
 
 cd "$FRONTEND"
 
+# --- Node: risolverlo esplicitamente, non fidarsi del PATH ------------------
+#
+# Il cron gira con un PATH minimale e trova /usr/bin/node, che su questa
+# macchina e' la v12: Astro 7 ne richiede almeno la 22.12 e muore con
+# "SyntaxError: Unexpected token '.'", cioe' l'optional chaining che quel Node
+# non sa leggere. E' un errore che non dice nulla su cosa sia davvero
+# successo, e ha gia' fatto fallire tre volte le build accodate dal pannello
+# mentre la stessa build lanciata a mano riusciva, perche' la shell
+# interattiva ha nvm nel PATH.
+MINIMO_NODE=22
+
+trova_node() {
+  # 1. la versione di default di nvm, se installata
+  local nvm_default="$HOME/.nvm/alias/default"
+  if [[ -r "$nvm_default" ]]; then
+    local ver; ver=$(<"$nvm_default")
+    for candidato in "$HOME/.nvm/versions/node/$ver/bin" "$HOME/.nvm/versions/node/v$ver"*/bin; do
+      [[ -x "$candidato/node" ]] && { echo "$candidato"; return; }
+    done
+  fi
+
+  # 2. la piu' recente fra quelle installate da nvm
+  local ultima
+  ultima=$(ls -d "$HOME"/.nvm/versions/node/v*/bin 2>/dev/null | sort -V | tail -1)
+  [[ -n "$ultima" && -x "$ultima/node" ]] && { echo "$ultima"; return; }
+
+  # 3. quello che c'e' nel PATH
+  local dal_path; dal_path=$(command -v node 2>/dev/null)
+  [[ -n "$dal_path" ]] && dirname "$dal_path"
+}
+
+NODE_BIN="$(trova_node)"
+[[ -n "$NODE_BIN" ]] || errore "Node non trovato. Astro non puo' girare."
+export PATH="$NODE_BIN:$PATH"
+
+versione_node=$(node -v 2>/dev/null)
+maggiore=${versione_node#v}; maggiore=${maggiore%%.*}
+
+if [[ -z "$maggiore" ]] || (( maggiore < MINIMO_NODE )); then
+  errore "Node ${versione_node:-non rilevato} da $NODE_BIN, ma Astro ne richiede almeno la $MINIMO_NODE.
+         Senza questo controllo la build fallirebbe con un oscuro
+         \"SyntaxError: Unexpected token '.'\" che non spiega la causa."
+fi
+
+echo "    node $versione_node ($NODE_BIN)"
+
 log "Build"
 # NIENTE pipe qui: una pipe maschera l'exit code ed e' esattamente l'errore
 # che ha causato l'incidente.

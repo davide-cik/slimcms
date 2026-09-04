@@ -81,7 +81,7 @@ class SiteResource extends Resource
                     ->maxLength(190)
                     ->rule('regex:/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)+$/')
                     ->helperText('Senza http:// e senza www. Es: cliente.it oppure blog.cliente.it')
-                    ->dehydrateStateUsing(fn (?string $s): string => mb_strtolower(trim((string) $s))),
+                    ->dehydrateStateUsing(fn (?string $state, ?Site $record): ?string => self::normalizzaDominio($state, $record)),
 
                 TextInput::make('name')
                     ->label('Nome del sito')
@@ -100,12 +100,31 @@ class SiteResource extends Resource
         ]);
     }
 
+    /**
+     * Normalizza un dominio, senza mai poterlo svuotare.
+     *
+     * E' successo davvero: con un parametro di closure che Filament non
+     * sapeva risolvere, qui arrivava null, il risultato era stringa vuota e
+     * il dominio veniva sovrascritto al primo salvataggio del sito. La
+     * validazione 'required' non protegge, perche' gira PRIMA di questa
+     * trasformazione: il valore era valido quando e' stato validato ed e'
+     * stato svuotato dopo.
+     *
+     * Sta in un metodo e non dentro la closure per poterlo testare.
+     */
+    public static function normalizzaDominio(?string $stato, ?Site $record = null): ?string
+    {
+        $pulito = mb_strtolower(trim((string) $stato));
+
+        return $pulito !== '' ? $pulito : $record?->domain;
+    }
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
                 TextColumn::make('domain')->label('Dominio')->searchable()->sortable()->weight('medium')
-                    ->url(fn (Site $r): string => 'https://' . $r->domain)
+                    ->url(fn (Site $record): string => 'https://' . $record->domain)
                     ->openUrlInNewTab(),
 
                 TextColumn::make('name')->label('Nome')->searchable()->color('gray'),
@@ -124,7 +143,7 @@ class SiteResource extends Resource
                 TextColumn::make('ssl_status')
                     ->label('Certificato')
                     ->badge()
-                    ->formatStateUsing(fn (?string $s): string => match ($s) {
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'valido' => 'valido',
                         'in_scadenza' => 'in scadenza',
                         'scaduto' => 'SCADUTO',
@@ -132,16 +151,16 @@ class SiteResource extends Resource
                         'da_configurare' => 'da configurare',
                         default => $s ?? '—',
                     })
-                    ->color(fn (?string $s): string => match ($s) {
+                    ->color(fn (?string $state): string => match ($state) {
                         'valido' => 'success',
                         'in_scadenza' => 'warning',
                         'scaduto', 'fallito' => 'danger',
                         default => 'gray',
                     })
-                    ->description(fn (Site $r): ?string => $r->ssl_expires_at?->format('d/m/Y')),
+                    ->description(fn (Site $record): ?string => $record->ssl_expires_at?->format('d/m/Y')),
 
                 TextColumn::make('dns_status')->label('DNS')->badge()
-                    ->color(fn (?string $s): string => $s === 'ok' ? 'success' : 'warning')
+                    ->color(fn (?string $state): string => $state === 'ok' ? 'success' : 'warning')
                     ->toggleable(),
             ])
             ->defaultSort('domain')

@@ -53,11 +53,11 @@ class RedattoriRelationManager extends RelationManager
                 TextColumn::make('role')
                     ->label('Ruolo')
                     ->badge()
-                    ->state(fn (User $r): string => $r->pivot->role ?? 'editor')
-                    ->color(fn (string $s): string => $s === 'admin' ? 'success' : 'gray'),
+                    ->state(fn (User $record): string => $record->pivot->role ?? 'editor')
+                    ->color(fn (string $state): string => $state === 'admin' ? 'success' : 'gray'),
                 TextColumn::make('altri_siti')
                     ->label('Altri siti')
-                    ->state(fn (User $r): int => $r->sites()->withoutTenancy()
+                    ->state(fn (User $record): int => $record->sites()->withoutTenancy()
                         ->whereKeyNot($this->getOwnerRecord())->count())
                     ->color('gray'),
             ])
