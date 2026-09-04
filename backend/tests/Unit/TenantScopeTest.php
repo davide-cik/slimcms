@@ -56,6 +56,9 @@ class TenantScopeTest extends TestCase
     private const EXCLUDED_MODELS = [
         \App\Models\Tenant::class,  // e' il tenant stesso, non un dato al suo interno
         \App\Models\Plan::class,    // catalogo commerciale di piattaforma
+        \App\Models\BuildRequest::class, // lavoro di piattaforma, non contenuto:
+                                    // i comandi in console devono vedere le build
+                                    // di tutti i siti per eseguirle in ordine
         \App\Models\User::class,    // TODO: da rivedere quando esistera' il pivot site_user.
                                     // Oggi passa solo perche' la tabella users e' ancora
                                     // quella di default e non ha site_id: esclusione NON progettata.

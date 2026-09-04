@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Page;
+use App\Models\Post;
+use App\Models\Site;
+use App\Observers\ContenutoObserver;
+use App\Observers\SiteObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,6 +25,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->silenceDeprecationsOnConsole();
+
+        // Accodano le rigenerazioni statiche quando cambia un contenuto.
+        Page::observe(ContenutoObserver::class);
+        Post::observe(ContenutoObserver::class);
+        Site::observe(SiteObserver::class);
     }
 
     /**

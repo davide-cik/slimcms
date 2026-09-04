@@ -185,6 +185,36 @@ Da rimuovere quando stancl sistemerà la cosa a monte.
   e per le poche funzioni dinamiche: ricerca interna, form contatto.
 - **Astro non fa fetch a runtime** per il contenuto: lo riceve in fase di build.
 
+## Coda di build
+
+Quando un contenuto pubblicato cambia, un observer accoda una rigenerazione in
+`build_requests`. Un cron esegue le build in attesa ogni minuto.
+
+**Non è un worker Laravel, ed è una deviazione dalle specifiche §7.1 dovuta all'ambiente:**
+php.ini qui disabilita `pcntl_*`, quindi `queue:work` in modalità daemon e **Horizon non
+partono affatto** (`Call to undefined function pcntl_signal`). Il comando
+`slimcms:build-queue` fa lo stesso lavoro in modo idempotente, protetto da `flock` e da
+`lockForUpdate` in transazione, quindi girare ogni minuto è sicuro anche con passate
+sovrapposte. Se un giorno `pcntl` venisse abilitato, passare a un job vero è un refactor
+locale: la logica di debounce sta già in `BuildQueue`.
+
+| Comportamento | Dove |
+|---|---|
+| Debounce 45s, tetto massimo 300s | `BuildQueue::accoda()` |
+| Una build `full` assorbe le `incremental` in attesa | idem |
+| `site.created` salta il debounce ed ha priorità | idem + `orderByRaw` nel runner |
+| Retry con backoff 1/4/9 minuti, max 3 tentativi | `RunBuildQueue::esegui()` |
+| Alert per build ferme oltre 5 minuti | `BuildRequest::inRitardo()` |
+
+Le bozze che restano bozze **non** accodano nulla: una pagina mai pubblicata non esiste nel
+sito statico, e rigenerarlo a ogni salvataggio automatico dell'editor sarebbe lavoro sprecato.
+
+L'observer prende il sito da `$model->site_id`, **non** da `app('currentSite')`: in coda o
+in console quel binding può non esserci, e la build finirebbe sul sito sbagliato.
+
+Comandi utili: `php artisan slimcms:build-queue --site=<dominio>` forza una build completa
+ignorando il debounce; `GET /api/sites/{site}/builds` mostra lo stato.
+
 ## Pubblicazione del frontend
 
 **Usa sempre `scripts/deploy-frontend.sh`.** Non lanciare `npm run build` seguito da

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\BuildWebhookController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\SitePageController;
 use App\Http\Controllers\Api\SitePostController;
@@ -35,6 +36,8 @@ Route::prefix('sites/{site}')
         Route::get('posts', [SitePostController::class, 'index']);
         Route::get('posts/{slug}', [SitePostController::class, 'show']);
         Route::get('sitemap', [SitePageController::class, 'sitemap']);
+        Route::get('builds', [BuildWebhookController::class, 'index']);
+        Route::post('builds', [BuildWebhookController::class, 'store']);
     });
 
 Route::prefix('public')
