@@ -1,0 +1,76 @@
+---
+import Base from '../layouts/Base.astro';
+import { elencoPagine, sito, type Pagina, type Sito } from '../lib/api';
+
+/**
+ * La pagina d'errore del sito.
+ *
+ * Senza questa, chi sbaglia un indirizzo riceve il 404 di HestiaCP: in
+ * inglese, senza niente del sito, e uguale per tutti i clienti. E' anche
+ * l'unico punto in cui un visitatore perso puo' ritrovare la strada, quindi
+ * elenca le pagine invece di limitarsi a dire che non c'e' niente.
+ */
+const [pagine, infoSito] = await Promise.all([elencoPagine(), sito()]);
+const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
+
+const altre = pagine.filter((p: Pagina) => !p.is_home);
+
+// Una pagina d'errore non e' un contenuto: non deve finire nell'indice ne'
+// nella sitemap, e non ha un indirizzo canonico proprio.
+const finta: Pagina = {
+  ...(pagine.find((p: Pagina) => p.is_home) ?? pagine[0]),
+  title: 'Pagina non trovata',
+  slug: '404',
+  is_home: false,
+  colonne: 1,
+  blocks: [],
+  seo: {
+    meta_title: `Pagina non trovata — ${(infoSito as Sito).name}`,
+    meta_description: null,
+    canonical_url: `https://${dominio}/`,
+    noindex: true,
+    og_title: null,
+    og_description: null,
+    og_image: null,
+  },
+  geo: { structured_summary: null, key_facts: [], source_attribution: { published_at: null, updated_at: null } },
+};
+---
+
+<Base pagina={finta} dominio={dominio} sito={infoSito as Sito}>
+  <section class="apertura">
+    <p class="occhiello">Errore 404</p>
+    <h1>Questa pagina non c'è</h1>
+    <p class="sommario">
+      L'indirizzo potrebbe essere cambiato, o esserci un errore di battitura.
+      Da qui puoi tornare al sito.
+    </p>
+    <div class="azioni">
+      <a class="bottone primario" href="/">Torna alla home</a>
+    </div>
+  </section>
+
+  {altre.length > 0 && (
+    <section class="capacita">
+      <span class="etichetta">Le pagine del sito</span>
+      <ul class="elenco-404">
+        {altre.map((p: Pagina) => (
+          <li><a href={`/${p.slug}/`}>{p.title}</a></li>
+        ))}
+      </ul>
+    </section>
+  )}
+</Base>
+
+<style>
+  .elenco-404 {
+    list-style: none;
+    margin: 1.2rem 0 0;
+    padding: 0;
+    font-family: var(--display);
+    font-size: 1.05rem;
+    line-height: 2.1;
+  }
+  .elenco-404 a { color: var(--segnale); text-decoration: none; }
+  .elenco-404 a:hover { text-decoration: underline; }
+</style>

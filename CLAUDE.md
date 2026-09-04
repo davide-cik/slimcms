@@ -232,6 +232,47 @@ privi.
 succede dopo ogni `php artisan test`, che azzera il DB ma non il disco. Di default elenca
 soltanto; `--elimina` cancella davvero.
 
+## Reindirizzamenti (301/302)
+
+Il sito pubblico è statico: un redirect non può essere una query. Le righe attive
+vengono **compilate** in un `.htaccess` durante la build e depositate nel sito — stesso
+principio della mappa di routing (§7.2), la risoluzione di un indirizzo non sta nel
+percorso di lettura.
+
+Verificato sul server: `AllowOverride All`, `mod_alias` e `mod_rewrite` rispondono
+entrambi, e nginx passa ad Apache tutti gli indirizzi "puliti" con lo slash finale, che
+sono quelli che usiamo.
+
+`GET /api/sites/{site}/htaccess` consegna **il file già compilato**, non l'elenco delle
+righe: la regola di come un redirect diventa configurazione Apache sta in un posto solo.
+Il file non può essere una rotta di Astro (i nomi che iniziano con un punto non sono
+indirizzi validi) né essere messo a mano nella document root (`rsync --delete` lo
+cancellerebbe): la rotta `htaccess.txt` lo genera e l'integrazione `slimcms-htaccess`
+lo rinomina a fine build.
+
+`GeneratoreHtaccess` **appiattisce le catene** (A→B→C diventa A→C: due giri di rete a
+ogni visita, e i motori ne seguono un numero limitato) e **toglie gli anelli**: lasciare
+l'ultima tappa raggiunta produrrebbe un redirect su sé stesso, cioè un browser che gira
+finché non si arrende — peggio del 404 che si stava evitando. Ogni regola porta
+`RewriteCond %{REQUEST_FILENAME} !-f/-d`, così un redirect non può rendere irraggiungibile
+una pagina pubblicata.
+
+**Un `.htaccess` malformato fa rispondere 500 ad Apache su tutto il sito**, non solo sugli
+indirizzi reindirizzati: è il file più pericoloso che pubblichiamo. Per questo il filtro
+sugli spazi e i caratteri di controllo è sia nel form sia nel generatore, e il gate di
+deploy verifica che il file contenga solo le direttive previste.
+
+`ErrorDocument 404 /404.html` sta nello stesso file: senza, ogni cliente mostra il 404
+inglese di HestiaCP.
+
+### Trappola: `actingAs` invalida i test sui permessi dei token
+
+`$this->actingAs($user)` autentica una **sessione**, e in quel caso Sanctum attacca
+all'utente un `TransientToken` che consente **ogni** abilità. Un test dei permessi scritto
+così passa sempre, anche togliendo il controllo dal middleware. Usare
+`Sanctum::actingAs($user, ['site:<id>'])`, e verificare che il test fallisca davvero
+rompendo il middleware.
+
 ## Slug
 
 `App\Support\Slug::da()` è **l'unico punto** in cui si costruisce uno slug. Era

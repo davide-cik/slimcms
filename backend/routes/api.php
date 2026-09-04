@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BuildWebhookController;
 use App\Http\Controllers\Api\OpenGraphController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\SitePageController;
+use App\Http\Controllers\Api\SiteRedirectController;
 use App\Http\Controllers\Api\SitePostController;
 use App\Http\Resources\SiteResource;
 use App\Models\Site;
@@ -38,6 +39,11 @@ Route::prefix('sites/{site}')
         Route::get('posts', [SitePostController::class, 'index']);
         Route::get('posts/{slug}', [SitePostController::class, 'show']);
         Route::get('sitemap', [SitePageController::class, 'sitemap']);
+
+        // Il .htaccess gia' compilato, non le righe grezze: la regola di come
+        // si traduce un redirect in configurazione Apache sta in un punto
+        // solo, lato Laravel, non duplicata nel worker di build.
+        Route::get('htaccess', [SiteRedirectController::class, 'htaccess']);
         // Immagini Open Graph: PNG, perche' i social non accettano SVG.
         Route::get('og.png', [OpenGraphController::class, 'sito']);
         Route::get('og/{slug}.png', [OpenGraphController::class, 'contenuto']);

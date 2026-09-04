@@ -143,6 +143,20 @@ done < <(grep -rhoE 'src="/(media|[a-z0-9_-]+\.(svg|png|jpg|webp))[^"]*"' dist -
 (( mancanti == 0 )) || errore "$mancanti immagini referenziate non esistono in dist/."
 echo "    immagini: tutte presenti"
 
+# Il .htaccess porta i reindirizzamenti e la pagina d'errore del sito. Se e'
+# malformato Apache risponde 500 su TUTTO il sito, non solo sugli indirizzi
+# reindirizzati: e' il file piu' pericoloso che pubblichiamo.
+[[ -s dist/.htaccess ]] || errore "dist/.htaccess assente: l'integrazione non ha girato."
+grep -q '^ErrorDocument 404 /404.html$' dist/.htaccess \
+  || errore ".htaccess senza ErrorDocument: i 404 mostrerebbero la pagina dell'hosting."
+[[ -s dist/404.html ]] || errore "dist/404.html assente, ma il .htaccess ci punta."
+# Le direttive ammesse sono queste e basta: qualunque altra cosa in quel file
+# arriva da un percorso scritto da chi redige, e non deve poterci finire.
+if grep -vE '^\s*(#|$|ErrorDocument |RewriteEngine |RewriteCond |RewriteRule |</?IfModule)' dist/.htaccess; then
+  errore "il .htaccess contiene direttive impreviste (righe sopra)."
+fi
+echo "    .htaccess: $(grep -c '^RewriteRule' dist/.htaccess) reindirizzamenti, pagina 404 del sito"
+
 [[ -s dist/sitemap.xml ]] || errore "dist/sitemap.xml assente o vuoto."
 grep -q "<loc>" dist/sitemap.xml || errore "sitemap.xml senza nessuna URL."
 echo "    sitemap.xml: $(grep -c '<loc>' dist/sitemap.xml) URL"

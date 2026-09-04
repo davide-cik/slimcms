@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
+use App\Support\PerSito;
 use App\Support\Slug;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -23,7 +24,7 @@ class CategoryForm
                 ->label('Slug')
                 ->required()
                 ->maxLength(120)
-                ->unique(ignoreRecord: true, modifyRuleUsing: Slug::regolaUnica(...)),
+                ->unique(ignoreRecord: true, modifyRuleUsing: PerSito::regolaUnica(...)),
 
             Textarea::make('description')
                 ->label('Descrizione')

@@ -15,6 +15,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 use App\Models\Page;
+use App\Support\PerSito;
 use App\Support\Slug;
 
 /**
@@ -46,7 +47,7 @@ class PageForm
                         ->required()
                         ->maxLength(255)
                         ->helperText("L'indirizzo della pagina: slimcms.it/<slug>")
-                        ->unique(ignoreRecord: true, modifyRuleUsing: Slug::regolaUnica(...))
+                        ->unique(ignoreRecord: true, modifyRuleUsing: PerSito::regolaUnica(...))
                         ->disabled(fn (?\App\Models\Page $record): bool => (bool) $record?->is_home)
                         ->dehydrated(fn (?\App\Models\Page $record): bool => ! $record?->is_home),
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Posts\Schemas;
 
 use App\Filament\Resources\Pages\Schemas\PageForm;
+use App\Support\PerSito;
 use App\Support\Slug;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -39,7 +40,7 @@ class PostForm
                         ->label('Slug')
                         ->required()
                         ->maxLength(255)
-                        ->unique(ignoreRecord: true, modifyRuleUsing: Slug::regolaUnica(...)),
+                        ->unique(ignoreRecord: true, modifyRuleUsing: PerSito::regolaUnica(...)),
 
                     Textarea::make('excerpt')
                         ->label('Estratto')
@@ -59,7 +60,7 @@ class PostForm
                         ->createOptionForm([
                             TextInput::make('name')->label('Nome')->required(),
                             TextInput::make('slug')->label('Slug')->required()
-                                ->unique(table: 'categories', modifyRuleUsing: Slug::regolaUnica(...)),
+                                ->unique(table: 'categories', modifyRuleUsing: PerSito::regolaUnica(...)),
                         ]),
 
                     // Non piu' TagsInput su una colonna JSON: i tag sono
@@ -80,7 +81,7 @@ class PostForm
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Slug::da($state))),
                             TextInput::make('slug')->label('Slug')->required()->maxLength(60)
-                                ->unique(table: 'tags', modifyRuleUsing: Slug::regolaUnica(...)),
+                                ->unique(table: 'tags', modifyRuleUsing: PerSito::regolaUnica(...)),
                         ])
                         ->helperText('Scrivi per cercarne uno; se non c\'e\', lo crei da qui.'),
 

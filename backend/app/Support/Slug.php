@@ -2,9 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\Concerns\BelongsToSite;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Unique;
 
 /**
  * L'unico punto in cui si costruisce uno slug.
@@ -55,26 +53,4 @@ class Slug
         return Str::slug($testo, '-', 'en', self::DIZIONARIO);
     }
 
-    /**
-     * La regola di unicita' dello slug per il sito corrente.
-     *
-     * Senza, due nomi diversi che producono lo stesso slug ("Citta'" e
-     * "Citta") arrivano al database e il redattore riceve una pagina di
-     * errore SQL invece di un messaggio nel form. Vale per pagine, articoli,
-     * categorie e tag: la tabella ha l'indice unico su (site_id, slug) in
-     * tutti e quattro i casi.
-     *
-     * Il vincolo va ristretto al sito a mano: la regola `unique` di Laravel
-     * interroga la TABELLA, non il modello, quindi il global scope di
-     * BelongsToSite non la tocca. Senza il `where`, un tag "novita" su un
-     * sito impedirebbe di crearne uno con lo stesso nome su tutti gli altri.
-     *
-     * Il parametro si chiama `$rule` e non `$regola` perche' Filament inietta
-     * le dipendenze delle closure PER NOME: con un nome diverso non trova
-     * cosa passare e solleva un BindingResolutionException opaco.
-     */
-    public static function regolaUnica(Unique $rule): Unique
-    {
-        return $rule->where('site_id', BelongsToSite::currentSiteId());
-    }
 }

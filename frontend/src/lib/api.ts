@@ -274,6 +274,28 @@ export async function pagina(slug: string): Promise<Pagina> {
   return data;
 }
 
+/**
+ * Il .htaccess del sito, gia' compilato da Laravel.
+ *
+ * Si scarica il file finito e non l'elenco dei redirect perche' la regola di
+ * come un reindirizzamento diventa configurazione Apache deve stare in un
+ * posto solo. Riscriverla qui sarebbe la stessa giuntura che in questo
+ * progetto ha gia' prodotto piu' di un guasto.
+ */
+export async function htaccess(): Promise<string> {
+  if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');
+
+  const risposta = await fetch(`${BASE}/sites/${SITE}/htaccess`, {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+
+  if (!risposta.ok) {
+    throw new Error(`htaccess: l'API ha risposto ${risposta.status}.`);
+  }
+
+  return risposta.text();
+}
+
 export async function sitemap(): Promise<{
   site: string;
   urls: { loc: string; lastmod: string | null; changefreq: string; priority: string }[];

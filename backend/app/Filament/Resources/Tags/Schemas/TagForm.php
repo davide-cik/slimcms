@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tags\Schemas;
 
+use App\Support\PerSito;
 use App\Support\Slug;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -22,7 +23,7 @@ class TagForm
                 ->label('Slug')
                 ->required()
                 ->maxLength(60)
-                ->unique(ignoreRecord: true, modifyRuleUsing: Slug::regolaUnica(...))
+                ->unique(ignoreRecord: true, modifyRuleUsing: PerSito::regolaUnica(...))
                 ->helperText('L\'indirizzo della pagina d\'archivio: /tag/<slug>/'),
         ])->columns(2);
     }
