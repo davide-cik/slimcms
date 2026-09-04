@@ -7,11 +7,18 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            // Risolve il sito dall'Host: per gli endpoint pubblici a runtime.
+            'site.domain' => \App\Http\Middleware\ResolveSiteFromDomain::class,
+            // Verifica che il token Sanctum sia abilitato per il sito in URL:
+            // per gli endpoint letti dal worker di build.
+            'site.token' => \App\Http\Middleware\EnsureTokenCanAccessSite::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

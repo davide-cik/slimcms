@@ -39,6 +39,15 @@ class Site extends Model
         ];
     }
 
+    /**
+     * Nelle URL il sito e' identificato dal dominio, non dall'id numerico:
+     * /api/sites/slimcms.it/pages e' leggibile e stabile, /api/sites/1/pages no.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'domain';
+    }
+
     public function pages(): HasMany
     {
         return $this->hasMany(Page::class);
