@@ -96,10 +96,37 @@ scoped. Non affidarti mai all'auto-assegnazione. Abilita `QueueTenancyBootstrapp
 Per bypassare volutamente lo scope: `Page::withoutSiteScope()` (nostro) o
 `Site::withoutTenancy()` (macro di stancl). Solo con motivazione esplicita, mai per comodità.
 
+### 2-bis. `forceDelete()` su una query bypassa i global scope
+
+Trappola di Laravel, verificata sul sorgente e **incontrata davvero in sviluppo** (ha
+cancellato le pagine di un altro sito sul DB dev):
+
+| Forma | Percorso interno | Scope |
+|---|---|---|
+| `Page::query()->delete()` | `toBase()` → `applyScopes()` | ✅ applicato |
+| `Page::query()->forceDelete()` | `$this->query->delete()`, query builder grezzo | ❌ **bypassato** |
+| `$page->forceDelete()` (istanza) | `setKeysForSaveQuery()`, vincolo su chiave primaria | ✅ sicuro |
+
+`Builder::forceDelete()` non chiama `applyScopes()`: la delete attraversa tutti i tenant.
+Su un modello con `SoftDeletes` questo significa che **una riga sola di codice svuota la
+tabella di tutti i clienti**.
+
+Regola: non usare mai `forceDelete()` nella forma query. Per cancellare davvero, itera e
+chiama `forceDelete()` sulle istanze, oppure usa `delete()` che è correttamente scoped.
+`tests/Feature/SiteIsolationTest.php` fissa questa differenza.
+
 ### 3. L'isolamento si verifica lato Laravel, mai lato Astro
 
 Nessun controllo di appartenenza va delegato al frontend. Astro riceve solo ciò che l'API
 ha già filtrato.
+
+Ci sono due reti di sicurezza, con garanzie diverse e complementari:
+
+- `tests/Unit/TenantScopeTest.php` — statico: i trait sono attaccati ai modelli giusti
+- `tests/Feature/SiteIsolationTest.php` — comportamentale: lo scope **filtra** davvero
+
+Il secondo è quello che protegge i dati dei clienti; il primo impedisce di dimenticare il
+trait su un modello nuovo. Servono entrambi.
 
 `backend/tests/Unit/TenantScopeTest.php` è la rete di sicurezza: scansiona tutti i modelli
 e fallisce se uno ha una colonna di scoping senza il trait corrispondente (e viceversa).
