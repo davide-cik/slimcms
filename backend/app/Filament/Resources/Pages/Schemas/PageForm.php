@@ -14,6 +14,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
+use App\Models\Page;
 use Illuminate\Support\Str;
 
 /**
@@ -64,6 +65,24 @@ class PageForm
                         ->default(1)
                         ->required()
                         ->helperText('I blocchi si dispongono su questo numero di colonne. L\'apertura resta sempre a tutta larghezza, e su telefono si impila tutto.'),
+
+                    // La libreria sta FUORI dal builder di proposito.
+                    // SpatieMediaLibraryFileUpload dentro un blocco allega il
+                    // file alla pagina e poi CANCELLA la chiave dallo stato
+                    // del blocco: il blocco resta senza sapere quali immagini
+                    // siano le sue, e due gallerie sulla stessa pagina si
+                    // vedrebbero addosso le immagini l'una dell'altra.
+                    // Qui si carica una volta, e ogni blocco sceglie le sue.
+                    SpatieMediaLibraryFileUpload::make('libreria')
+                        ->label('Immagini della pagina')
+                        ->collection('immagini')
+                        ->multiple()
+                        ->reorderable()
+                        ->appendFiles()
+                        ->image()
+                        ->maxSize(8192)
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                        ->helperText('Carica qui le immagini, poi scegli quali mostrare nei singoli blocchi. Il testo alternativo si imposta dalla libreria media.'),
 
                     self::blocchi(),
                 ])->columns(1),
@@ -227,15 +246,11 @@ class PageForm
                     ->icon('heroicon-o-photo')
                     ->schema([
                         TextInput::make('titolo')->label('Titolo'),
-                        SpatieMediaLibraryFileUpload::make('immagini')
+                        Select::make('media')
                             ->label('Immagini')
-                            ->collection('immagini')
                             ->multiple()
-                            ->reorderable()
-                            ->image()
-                            ->maxSize(8192)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->helperText('Massimo 8 MB per immagine. Il testo alternativo si imposta dalla libreria media.'),
+                            ->options(fn (?Page $record): array => self::immaginiDisponibili($record))
+                            ->helperText('Scelte fra quelle caricate in "Immagini della pagina". L\'ordine e\' quello in cui le selezioni.'),
                     ]),
 
                 BlockBuilder\Block::make('cta')
@@ -268,6 +283,105 @@ class PageForm
                             ->defaultItems(1)
                             ->collapsed()
                             ->itemLabel(fn (array $state): ?string => $state['titolo'] ?? null),
+                    ]),
+
+                // Immagine e testo affiancati: il blocco piu' usato in un
+                // sito aziendale dopo l'apertura.
+                BlockBuilder\Block::make('immagine_testo')
+                    ->label('Immagine e testo')
+                    ->icon('heroicon-o-view-columns')
+                    ->schema([
+                        Select::make('media')
+                            ->label('Immagine')
+                            ->options(fn (?Page $record): array => self::immaginiDisponibili($record))
+                            ->helperText('Fra quelle caricate in "Immagini della pagina".'),
+                        Select::make('posizione')
+                            ->label('Immagine a')
+                            ->options(['sinistra' => 'Sinistra', 'destra' => 'Destra'])
+                            ->default('sinistra'),
+                        TextInput::make('titolo')->label('Titolo'),
+                        RichEditor::make('corpo')->label('Testo')->columnSpanFull(),
+                    ])->columns(2),
+
+                BlockBuilder\Block::make('citazione')
+                    ->label('Citazione')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->schema([
+                        Textarea::make('testo')->label('Citazione')->rows(3)->required()->columnSpanFull(),
+                        TextInput::make('autore')->label('Chi l\'ha detta')->maxLength(80),
+                        TextInput::make('ruolo')->label('Ruolo o azienda')->maxLength(120),
+                    ])->columns(2),
+
+                // Numeri: la striscia di dati che da' credibilita' a una
+                // pagina, ed e' anche materiale per i motori generativi.
+                BlockBuilder\Block::make('numeri')
+                    ->label('Numeri')
+                    ->icon('heroicon-o-chart-bar')
+                    ->schema([
+                        Repeater::make('voci')
+                            ->label('Voci')
+                            ->schema([
+                                TextInput::make('valore')->label('Numero')->required()->maxLength(20)
+                                    ->helperText('Scrivilo come va letto: 24, 98%, 3x.'),
+                                TextInput::make('etichetta')->label('Cosa misura')->required()->maxLength(60),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(3)
+                            ->itemLabel(fn (array $state): ?string => $state['valore'] ?? null),
+                    ]),
+
+                BlockBuilder\Block::make('loghi')
+                    ->label('Loghi')
+                    ->icon('heroicon-o-building-office-2')
+                    ->schema([
+                        TextInput::make('titolo')->label('Titolo')->placeholder('Ci hanno scelto'),
+                        Select::make('media')
+                            ->label('Loghi')
+                            ->multiple()
+                            ->options(fn (?Page $record): array => self::immaginiDisponibili($record))
+                            ->helperText('Fra le immagini della pagina. Il nome dell\'azienda va nel testo alternativo del file.'),
+                    ]),
+
+                // Video e mappe: si incorpora un indirizzo, non del codice.
+                // Incollare un <iframe> in un campo di testo significherebbe
+                // accettare HTML arbitrario da chi redige.
+                BlockBuilder\Block::make('incorpora')
+                    ->label('Video o mappa')
+                    ->icon('heroicon-o-play-circle')
+                    ->schema([
+                        TextInput::make('url')
+                            ->label('Indirizzo')
+                            ->required()
+                            ->url()
+                            ->helperText('YouTube, Vimeo o Google Maps. Incolla l\'indirizzo della pagina, non il codice da incorporare.')
+                            ->rule('regex:/^https:\\/\\/(www\\.)?(youtube\\.com|youtu\\.be|vimeo\\.com|player\\.vimeo\\.com|maps\\.google\\.[a-z.]+|www\\.google\\.[a-z.]+\\/maps)/i')
+                            ->validationMessages(['regex' => 'Per ora sono supportati YouTube, Vimeo e Google Maps.']),
+                        TextInput::make('titolo')
+                            ->label('Descrizione')
+                            ->required()
+                            ->maxLength(120)
+                            ->helperText('Obbligatoria: e\' quello che sente chi naviga con uno screen reader al posto del video.'),
+                    ])->columns(2),
+
+                BlockBuilder\Block::make('contatti')
+                    ->label('Contatti')
+                    ->icon('heroicon-o-map-pin')
+                    ->schema([
+                        TextInput::make('titolo')->label('Titolo')->placeholder('Dove siamo'),
+                        TextInput::make('email')->label('Email')->email(),
+                        TextInput::make('telefono')->label('Telefono')->tel(),
+                        TextInput::make('indirizzo')->label('Indirizzo')->maxLength(200),
+                        Textarea::make('orari')->label('Orari')->rows(2)->columnSpanFull(),
+                    ])->columns(2),
+
+                BlockBuilder\Block::make('separatore')
+                    ->label('Separatore')
+                    ->icon('heroicon-o-minus')
+                    ->schema([
+                        Select::make('stile')
+                            ->label('Stile')
+                            ->options(['linea' => 'Linea', 'spazio' => 'Solo spazio'])
+                            ->default('linea'),
                     ]),
 
                 BlockBuilder\Block::make('faq')
@@ -305,5 +419,27 @@ class PageForm
         }
 
         return "{$n} caratteri — buona lunghezza.";
+    }
+
+    /**
+     * Le immagini gia' caricate sulla pagina, come opzioni per i blocchi.
+     *
+     * Chiave: l'uuid del media, non l'id numerico. L'uuid non cambia se un
+     * giorno i media venissero rigenerati o migrati, e non rivela quanti file
+     * ci sono sulla piattaforma.
+     *
+     * @return array<string, string>
+     */
+    private static function immaginiDisponibili(?Page $record): array
+    {
+        if ($record === null) {
+            return [];
+        }
+
+        return $record->getMedia('immagini')
+            ->mapWithKeys(fn ($m) => [
+                $m->uuid => $m->getCustomProperty('alt') ?: $m->file_name,
+            ])
+            ->all();
     }
 }

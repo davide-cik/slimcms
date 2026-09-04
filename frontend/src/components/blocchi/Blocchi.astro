@@ -18,6 +18,59 @@ const colonneValide = Math.min(3, Math.max(1, Number(colonne) || 1));
  * Il tipo e i dati stanno su due livelli diversi, non appiattiti: leggerli
  * qui in un punto solo evita di ripetere `b.data?.x` in ogni ramo.
  */
+/**
+ * Un'immagine risolta dall'API: i blocchi salvano un riferimento, il
+ * PageResource lo sostituisce con url e alt prima di consegnarlo qui.
+ */
+interface Immagine {
+  url: string;
+  alt?: string | null;
+}
+
+const eImmagine = (v: unknown): v is Immagine =>
+  typeof v === 'object' && v !== null && typeof (v as Immagine).url === 'string';
+
+const immagini = (v: unknown): Immagine[] => (Array.isArray(v) ? v.filter(eImmagine) : []);
+const immagine = (v: unknown): Immagine | null => (eImmagine(v) ? v : null);
+
+/**
+ * Traduce l'indirizzo di una pagina video/mappa nel suo indirizzo
+ * incorporabile. Il pannello valida gia' il dominio; qui si costruisce l'URL
+ * dell'embed a mano invece di fidarsi di cio' che e' stato incollato, cosi'
+ * l'iframe non puo' puntare altrove.
+ */
+function incorporabile(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = u.pathname.slice(1);
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : null;
+    }
+
+    if (host === 'youtube.com') {
+      const id = u.searchParams.get('v') ?? u.pathname.replace(/^\/(embed|shorts)\//, '');
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : null;
+    }
+
+    if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+      const id = u.pathname.split('/').filter(Boolean).pop();
+      return id && /^\d+$/.test(id) ? `https://player.vimeo.com/video/${id}` : null;
+    }
+
+    if (host.startsWith('maps.google.') || (host.startsWith('google.') && u.pathname.startsWith('/maps'))) {
+      const q = u.searchParams.get('q');
+      return q ? `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed` : null;
+    }
+
+    return null;
+  } catch {
+    // Un indirizzo malformato non deve far fallire la build di tutto il sito.
+    return null;
+  }
+}
+
 const elenco = blocchi.map((b) => ({
   tipo: (b as Record<string, unknown>).type as string | undefined,
   d: ((b as Record<string, unknown>).data ?? {}) as Record<string, unknown>,
@@ -60,12 +113,107 @@ const elenco = blocchi.map((b) => ({
           <section class="capacita">
             {b.titolo && <h2>{b.titolo}</h2>}
             <div class="galleria">
-              {(b.immagini as { percorso: string; alt: string }[] | undefined)?.map((i) => (
-                <img src={i.percorso} alt={i.alt} loading="lazy" />
+              {immagini(b.media).map((i) => (
+                <img src={i.url} alt={i.alt ?? ''} loading="lazy" />
               ))}
             </div>
           </section>
         );
+
+      case 'immagine_testo': {
+        const foto = immagine(b.media);
+        return (
+          <section class={`capacita accostato${b.posizione === 'destra' ? ' invertito' : ''}`}>
+            {foto && <img src={foto.url} alt={foto.alt ?? ''} loading="lazy" />}
+            <div>
+              {b.titolo && <h2>{b.titolo}</h2>}
+              {b.corpo && <div class="corpo-ricco" set:html={String(b.corpo)} />}
+            </div>
+          </section>
+        );
+      }
+
+      case 'citazione':
+        return (
+          <section class="chiusura">
+            <figure class="citazione">
+              <blockquote>{b.testo}</blockquote>
+              {(b.autore || b.ruolo) && (
+                <figcaption>
+                  {b.autore && <strong>{b.autore}</strong>}
+                  {b.autore && b.ruolo ? ' — ' : ''}
+                  {b.ruolo}
+                </figcaption>
+              )}
+            </figure>
+          </section>
+        );
+
+      case 'numeri':
+        return (
+          <section class="capacita">
+            <dl class="numeri">
+              {(b.voci as { valore: string; etichetta: string }[] | undefined)?.map((v) => (
+                <div>
+                  {/* dd prima di dt nel markup no: l'ordine visivo si fa con
+                      il CSS, quello del documento resta etichetta -> valore. */}
+                  <dt>{v.etichetta}</dt>
+                  <dd>{v.valore}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        );
+
+      case 'loghi':
+        return (
+          <section class="capacita">
+            {b.titolo && <h2>{b.titolo}</h2>}
+            <ul class="loghi">
+              {immagini(b.media).map((i) => (
+                <li><img src={i.url} alt={i.alt ?? ''} loading="lazy" /></li>
+              ))}
+            </ul>
+          </section>
+        );
+
+      case 'incorpora': {
+        const src = incorporabile(String(b.url ?? ''));
+        if (!src) return null;
+        return (
+          <section class="chiusura">
+            <div class="incorpora">
+              <iframe
+                src={src}
+                title={String(b.titolo ?? '')}
+                loading="lazy"
+                allowfullscreen
+                referrerpolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+          </section>
+        );
+      }
+
+      case 'contatti':
+        return (
+          <section class="chiusura">
+            {b.titolo && <h2>{b.titolo}</h2>}
+            <ul class="contatti">
+              {b.indirizzo && <li>{b.indirizzo}</li>}
+              {b.telefono && (
+                <li><a href={`tel:${String(b.telefono).replace(/[^+\d]/g, '')}`}>{b.telefono}</a></li>
+              )}
+              {b.email && <li><a href={`mailto:${b.email}`}>{b.email}</a></li>}
+              {b.orari && <li>{b.orari}</li>}
+            </ul>
+          </section>
+        );
+
+      case 'separatore':
+        return b.stile === 'spazio'
+          ? <div class="separatore-spazio" />
+          : <hr class="separatore" />;
 
       case 'capacita':
         return (
@@ -145,6 +293,128 @@ const elenco = blocchi.map((b) => ({
 </style>
 
 <style>
+  /* ---------- immagine e testo ---------- */
+
+  .accostato {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2.4rem;
+    align-items: center;
+  }
+  .accostato img { width: 100%; height: auto; border-radius: 3px; }
+  /* L'ordine visivo si inverte con il CSS: nel documento l'immagine resta
+     prima del testo, cosi' chi legge in sequenza non trova la didascalia
+     prima di cio' che descrive. */
+  .accostato.invertito img { order: 2; }
+
+  /* ---------- citazione ---------- */
+
+  .citazione { margin: 0; max-width: 62ch; }
+  .citazione blockquote {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(1.3rem, 3vw, 1.85rem);
+    line-height: 1.32;
+    letter-spacing: -0.02em;
+    border-left: 2px solid var(--segnale);
+    padding-left: 1.4rem;
+  }
+  .citazione figcaption {
+    margin-top: 1rem;
+    padding-left: 1.4rem;
+    font-family: var(--display);
+    font-size: 0.92rem;
+    color: var(--inchiostro-tenue);
+  }
+  .citazione figcaption strong { color: var(--inchiostro); font-weight: 500; }
+
+  /* ---------- numeri ---------- */
+
+  .numeri {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    gap: 2rem;
+    margin: 0;
+  }
+  .numeri > div { display: flex; flex-direction: column-reverse; }
+  .numeri dd {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--segnale);
+  }
+  .numeri dt {
+    margin-top: 0.55rem;
+    font-family: var(--display);
+    font-size: 0.9rem;
+    color: var(--inchiostro-tenue);
+  }
+
+  /* ---------- loghi ---------- */
+
+  .loghi {
+    list-style: none;
+    margin: 1.6rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2rem 2.8rem;
+  }
+  .loghi img {
+    height: 34px;
+    width: auto;
+    /* Loghi di marchi diversi accostati a colori pieni fanno rumore: in
+       scala di grigi la riga si legge come una riga sola. */
+    filter: grayscale(1);
+    opacity: 0.65;
+    transition: filter 0.15s, opacity 0.15s;
+  }
+  .loghi img:hover { filter: none; opacity: 1; }
+
+  /* ---------- video e mappe ---------- */
+
+  .incorpora {
+    /* aspect-ratio invece del vecchio trucco del padding: riserva lo spazio
+       prima che l'iframe carichi, quindi la pagina non salta. */
+    aspect-ratio: 16 / 9;
+    max-width: 62rem;
+    background: var(--macchina-fondo);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .incorpora iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  /* ---------- contatti ---------- */
+
+  .contatti {
+    list-style: none;
+    margin: 1.2rem 0 0;
+    padding: 0;
+    font-family: var(--display);
+    line-height: 1.9;
+  }
+  .contatti a { color: var(--segnale); text-decoration: none; }
+  .contatti a:hover { text-decoration: underline; }
+
+  /* ---------- separatore ---------- */
+
+  .separatore {
+    max-width: var(--misura);
+    margin: 2.5rem auto;
+    border: 0;
+    border-top: 1px solid var(--riga);
+  }
+  .separatore-spazio { height: 3.5rem; }
+
+  @media (max-width: 860px) {
+    .accostato { grid-template-columns: minmax(0, 1fr); }
+    .accostato.invertito img { order: 0; }
+  }
+
   .galleria {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

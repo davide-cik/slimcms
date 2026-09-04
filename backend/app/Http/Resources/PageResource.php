@@ -32,7 +32,9 @@ class PageResource extends JsonResource
             'status' => $this->status,
             'published_at' => $this->publish_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
-            'blocks' => $this->blocks ?? [],
+            // I blocchi escono con le immagini gia' risolte: il frontend
+            // riceve url e alt, non uuid da ricomporre con l'elenco media.
+            'blocks' => $this->blocchiRisolti(),
 
             // Le immagini della pagina, con alt e varianti. I blocchi galleria
             // vi fanno riferimento per id.
@@ -67,5 +69,42 @@ class PageResource extends JsonResource
                 'schema_type' => $seo['schema_type'] ?? 'Article',
             ],
         ];
+    }
+
+    /**
+     * Sostituisce nei blocchi gli uuid dei media con la loro forma pubblica.
+     *
+     * I blocchi salvano un riferimento, non il file: la stessa immagine puo'
+     * comparire in piu' blocchi, e l'alt vive sul file. Risolvere qui evita
+     * che ogni consumatore debba incrociare `blocks` con `media` da solo,
+     * sbagliando in modo diverso ogni volta.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function blocchiRisolti(): array
+    {
+        $perUuid = $this->getMedia('immagini')->keyBy('uuid');
+
+        $risolvi = function ($valore) use (&$risolvi, $perUuid) {
+            if (is_string($valore)) {
+                return $perUuid->has($valore)
+                    ? $this->mediaPubblico($perUuid->get($valore))
+                    : $valore;
+            }
+
+            if (is_array($valore)) {
+                return array_map($risolvi, $valore);
+            }
+
+            return $valore;
+        };
+
+        return array_map(
+            fn (array $blocco): array => [
+                'type' => $blocco['type'] ?? null,
+                'data' => $risolvi($blocco['data'] ?? []),
+            ],
+            array_values($this->blocks ?? [])
+        );
     }
 }

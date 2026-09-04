@@ -207,13 +207,22 @@ girano in coda, dove il contesto non c'è.
 |---|---|
 | `Site` | `libreria` — il magazzino del sito |
 | `Post` | `copertina` (`singleFile`) |
-| `Page` | `immagini` — i blocchi galleria |
+| `Page` | `immagini` — la libreria della pagina, da cui pescano i blocchi |
 
 Conversioni `anteprima` (320px) e `web` (max 1600px), entrambe `nonQueued` perché il worker
 daemon qui non gira (vedi Coda di build).
 
 Il disco è `media` in `config/filesystems.php`. Per passare a Cloudflare R2 in produzione
 basta cambiare `MEDIA_DISK`: i percorsi non dipendono dal driver.
+
+I blocchi **non caricano file**: salvano l'`uuid` di un media della pagina, e
+`PageResource` lo risolve in url + alt prima di consegnarlo ad Astro. Non e' una
+preferenza di stile. `SpatieMediaLibraryFileUpload` dentro un blocco del Builder
+allega il file alla pagina e poi **cancella la chiave dallo stato del blocco**: il
+blocco resta senza sapere quali immagini siano le sue, la galleria online e' un
+contenitore vuoto, e due gallerie sulla stessa pagina si vedono addosso le immagini
+l'una dell'altra. Il campo di upload sta quindi **fuori** dal builder
+(`Immagini della pagina`), e ogni blocco sceglie da li'.
 
 L'`alt` sta nelle `custom_properties` del **file**, non sulla pagina che lo usa: segue
 l'immagine ovunque venga riusata. La lista in `/admin` segnala in giallo i file che ne sono
