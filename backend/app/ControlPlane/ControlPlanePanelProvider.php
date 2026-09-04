@@ -39,7 +39,15 @@ class ControlPlanePanelProvider extends PanelProvider
                 AppAuthentication::make()->recoverable(),
                 isRequired: true,
             )
-            ->path('manage')
+            // Su un dominio dedicato in produzione (manage.slimcms.it), sul
+            // percorso /manage in sviluppo dove il dominio non esiste.
+            // Quando il dominio c'e', il path resta vuoto: e' il dominio
+            // stesso a identificare il pannello.
+            ->when(
+                filled(config('slimcms.dominio_manage')),
+                fn ($panel) => $panel->domain(config('slimcms.dominio_manage'))->path(''),
+                fn ($panel) => $panel->path('manage'),
+            )
             ->colors([
                 // Rosso ruggine, deliberatamente DIVERSO dal verde del pannello
                 // dei siti: chi amministra deve capire a colpo d'occhio se sta

@@ -1,0 +1,74 @@
+# Template vhost per un sito SlimCMS.
+# Sostituire {{DOMINIO}} e installare come root.
+#
+# Il sito e' statico: nginx serve i file generati da Astro senza toccare PHP.
+# Solo due percorsi vanno all'applicazione:
+#   /admin  il pannello di redazione (specifiche sezione 8)
+#   /api    ricerca interna e form di contatto (sezione 7.3)
+#
+# Tutto il resto del traffico, cioe' la quasi totalita', non arriva mai a
+# Laravel: e' il punto dell'intera architettura.
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{DOMINIO}} www.{{DOMINIO}};
+
+    ssl_certificate     /home/claudio/conf/web/{{DOMINIO}}/ssl/{{DOMINIO}}.pem;
+    ssl_certificate_key /home/claudio/conf/web/{{DOMINIO}}/ssl/{{DOMINIO}}.key;
+
+    root /home/claudio/web/{{DOMINIO}}/public_html;
+    index index.html;
+
+    # Astro genera <slug>/index.html: la forma con slash finale e' quella
+    # canonica, ed e' quella elencata nella sitemap.
+    location / {
+        try_files $uri $uri/ $uri/index.html =404;
+    }
+
+    # Gli asset con hash nel nome sono immutabili: possono essere messi in
+    # cache per sempre, il nome cambia a ogni build.
+    location /_astro/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # I due percorsi dinamici. Passano all'app Laravel condivisa: non c'e'
+    # una copia dell'applicazione per sito.
+    location ~ ^/(admin|api|livewire|storage)(/|$) {
+        try_files $uri $uri/ /index.php?$query_string;
+
+        location ~ \.php$ {
+            include fastcgi_params;
+            fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME /home/claudio/web/slimcms-app/public/index.php;
+            fastcgi_param DOCUMENT_ROOT /home/claudio/web/slimcms-app/public;
+            # HTTP_HOST arriva intatto: ResolveSiteFromDomain lo usa per
+            # capire di quale sito si tratta.
+        }
+    }
+
+    # I file dell'applicazione non devono essere serviti come statici.
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+
+    access_log /var/log/nginx/domains/{{DOMINIO}}.log combined;
+    error_log  /var/log/nginx/domains/{{DOMINIO}}.error.log error;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{DOMINIO}} www.{{DOMINIO}};
+
+    # Let's Encrypt valida qui: questo percorso non va rediretto, altrimenti
+    # il rinnovo automatico fallisce e il sito va offline alla scadenza.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

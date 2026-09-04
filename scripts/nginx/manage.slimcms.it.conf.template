@@ -1,0 +1,51 @@
+# Vhost del control plane: manage.slimcms.it
+#
+# Sta su un dominio SUO e non su un percorso dei siti dei clienti: cosi' e'
+# banale chiuderlo dietro firewall, VPN o allowlist di IP, cosa impossibile
+# se vivesse sullo stesso host che deve restare aperto al pubblico.
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name manage.slimcms.it;
+
+    ssl_certificate     /home/claudio/conf/web/manage.slimcms.it/ssl/manage.slimcms.it.pem;
+    ssl_certificate_key /home/claudio/conf/web/manage.slimcms.it/ssl/manage.slimcms.it.key;
+
+    root /home/claudio/web/slimcms-app/public;
+    index index.php;
+
+    # Da abilitare quando si sa da quali IP si amministra. Il control plane
+    # crea, sospende e cancella clienti: non ha nessun motivo di essere
+    # raggiungibile dall'intera rete.
+    # allow 1.2.3.4;
+    # deny all;
+
+    client_max_body_size 32m;   # caricamento media
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+
+    access_log /var/log/nginx/domains/manage.slimcms.it.log combined;
+    error_log  /var/log/nginx/domains/manage.slimcms.it.error.log error;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name manage.slimcms.it;
+
+    location ^~ /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 301 https://$host$request_uri; }
+}

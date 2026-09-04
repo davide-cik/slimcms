@@ -20,7 +20,22 @@ return [
     | un ALIAS/ANAME/CNAME flattening se il DNS del cliente lo supporta
     | (Cloudflare lo fa). www.cliente.it invece funziona sempre.
     */
-    'cname_target' => env('SLIMCMS_CNAME_TARGET', 'sites.smilecrm.it'),
+    'cname_target' => env('SLIMCMS_CNAME_TARGET', 'sites.slimcms.it'),
+
+    /*
+    | Domini dei due pannelli. Lasciandoli vuoti i pannelli rispondono su
+    | qualunque host ai percorsi /manage e /admin, che va bene in sviluppo.
+    | In produzione vanno valorizzati: il control plane su un host suo rende
+    | banale chiuderlo dietro firewall o VPN, cosa impossibile se vive sullo
+    | stesso host dei siti dei clienti.
+    */
+    'dominio_manage' => env('SLIMCMS_DOMINIO_MANAGE'),
+
+    /*
+    | Il pannello dei contenuti NON ha un dominio proprio: vive su
+    | <dominio-del-sito>/admin, come da specifiche sezione 8. Ogni vhost di
+    | sito instrada /admin e /api a PHP; tutto il resto e' servito statico.
+    */
 
     /*
     | Dominio della piattaforma. I siti su un sottodominio di questo sono
