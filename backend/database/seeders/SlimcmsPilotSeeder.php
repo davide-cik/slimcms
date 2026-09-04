@@ -10,8 +10,8 @@ use App\Models\Plan;
 use App\Models\Site;
 use App\Models\Tag;
 use App\Models\Tenant;
+use App\Support\Slug;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 /**
  * Primo sito pilota: slimcms.it servito dalla piattaforma stessa.
@@ -138,7 +138,7 @@ class SlimcmsPilotSeeder extends Seeder
         // I tag sono righe come le categorie, non stringhe nell'articolo.
         $etichette = collect(['WordPress', 'Migrazione', 'Performance'])
             ->map(fn (string $nome) => Tag::firstOrCreate(
-                ['slug' => Str::slug($nome)],
+                ['slug' => Slug::da($nome)],
                 ['name' => $nome]
             )->id);
 

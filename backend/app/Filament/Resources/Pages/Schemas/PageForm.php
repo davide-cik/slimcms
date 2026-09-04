@@ -15,7 +15,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 use App\Models\Page;
-use Illuminate\Support\Str;
+use App\Support\Slug;
 
 /**
  * Form di redazione di una pagina.
@@ -39,13 +39,14 @@ class PageForm
                         ->required()
                         ->maxLength(255)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Str::slug((string) $state))),
+                        ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Slug::da($state))),
 
                     TextInput::make('slug')
                         ->label('Slug')
                         ->required()
                         ->maxLength(255)
                         ->helperText("L'indirizzo della pagina: slimcms.it/<slug>")
+                        ->unique(ignoreRecord: true, modifyRuleUsing: Slug::regolaUnica(...))
                         ->disabled(fn (?\App\Models\Page $record): bool => (bool) $record?->is_home)
                         ->dehydrated(fn (?\App\Models\Page $record): bool => ! $record?->is_home),
 

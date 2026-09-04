@@ -145,6 +145,39 @@ class TagTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_uno_slug_duplicato_da_un_messaggio_non_un_errore_sql(): void
+    {
+        Tag::create(['name' => 'Città', 'slug' => 'citta']);
+
+        // Due nomi diversi possono produrre lo stesso slug. Senza la regola,
+        // il vincolo del database scatta a valle e il redattore riceve una
+        // pagina di errore SQL invece di un messaggio nel form.
+        Livewire::test(\App\Filament\Resources\Tags\Pages\CreateTag::class)
+            ->fillForm(['name' => 'Citta', 'slug' => 'citta'])
+            ->call('create')
+            ->assertHasFormErrors(['slug']);
+
+        $this->assertSame(1, Tag::count());
+    }
+
+    public function test_lo_stesso_slug_resta_libero_sugli_altri_siti(): void
+    {
+        Tag::create(['name' => 'Novita', 'slug' => 'novita']);
+
+        // La regola `unique` di Laravel interroga la TABELLA, non il modello:
+        // senza il where esplicito sul sito, un tag "novita" di un cliente
+        // impedirebbe a tutti gli altri di averne uno con lo stesso nome.
+        $this->sitoB->useAsCurrent();
+        Filament::setTenant($this->sitoB, isQuiet: true);
+
+        Livewire::test(\App\Filament\Resources\Tags\Pages\CreateTag::class)
+            ->fillForm(['name' => 'Novita', 'slug' => 'novita'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(1, Tag::count());
+    }
+
     private function tokenDiBuild(): string
     {
         return auth()->user()->createToken('test', ["site:{$this->sitoA->id}"])->plainTextToken;

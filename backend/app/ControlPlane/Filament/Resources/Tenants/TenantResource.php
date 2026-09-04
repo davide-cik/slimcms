@@ -3,6 +3,7 @@
 namespace App\ControlPlane\Filament\Resources\Tenants;
 
 use App\Models\Tenant;
+use App\Support\Slug;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -14,7 +15,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 
 class TenantResource extends Resource
 {
@@ -57,8 +57,8 @@ class TenantResource extends Resource
                 ->live(onBlur: true)
                 ->afterStateUpdated(function (?string $state, callable $set, string $operation) {
                     if ($operation === 'create') {
-                        $set('slug', Str::slug((string) $state));
-                        $set('id', Str::slug((string) $state));
+                        $set('slug', Slug::da($state));
+                        $set('id', Slug::da($state));
                     }
                 }),
 

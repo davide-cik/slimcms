@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Posts\Schemas;
 
 use App\Filament\Resources\Pages\Schemas\PageForm;
+use App\Support\Slug;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
@@ -10,7 +11,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 /**
  * Form di redazione di un articolo.
@@ -33,9 +33,13 @@ class PostForm
                         ->required()
                         ->maxLength(255)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Str::slug((string) $state))),
+                        ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Slug::da($state))),
 
-                    TextInput::make('slug')->label('Slug')->required()->maxLength(255),
+                    TextInput::make('slug')
+                        ->label('Slug')
+                        ->required()
+                        ->maxLength(255)
+                        ->unique(ignoreRecord: true, modifyRuleUsing: Slug::regolaUnica(...)),
 
                     Textarea::make('excerpt')
                         ->label('Estratto')
@@ -54,7 +58,8 @@ class PostForm
                         ->preload()
                         ->createOptionForm([
                             TextInput::make('name')->label('Nome')->required(),
-                            TextInput::make('slug')->label('Slug')->required(),
+                            TextInput::make('slug')->label('Slug')->required()
+                                ->unique(table: 'categories', modifyRuleUsing: Slug::regolaUnica(...)),
                         ]),
 
                     // Non piu' TagsInput su una colonna JSON: i tag sono
@@ -73,8 +78,9 @@ class PostForm
                                 ->required()
                                 ->maxLength(60)
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Str::slug((string) $state))),
-                            TextInput::make('slug')->label('Slug')->required()->maxLength(60),
+                                ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Slug::da($state))),
+                            TextInput::make('slug')->label('Slug')->required()->maxLength(60)
+                                ->unique(table: 'tags', modifyRuleUsing: Slug::regolaUnica(...)),
                         ])
                         ->helperText('Scrivi per cercarne uno; se non c\'e\', lo crei da qui.'),
 

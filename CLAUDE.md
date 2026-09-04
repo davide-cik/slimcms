@@ -232,6 +232,37 @@ privi.
 succede dopo ogni `php artisan test`, che azzera il DB ma non il disco. Di default elenca
 soltanto; `--elimina` cancella davvero.
 
+## Slug
+
+`App\Support\Slug::da()` è **l'unico punto** in cui si costruisce uno slug. Era
+`Str::slug()` chiamata in nove file — form di pagine, articoli, categorie, tag, tenant,
+migrazioni, seeder — ognuno con la propria copia della regola. Gli slug pubblicati sono
+indirizzi: se le copie divergono, due contenuti creati in punti diversi finiscono su URL
+con regole diverse.
+
+`Str::slug()` da sola non basta per l'italiano. Gli accenti li tratta bene
+(`città` → `citta`), ma i caratteri che non riconosce li **elimina** invece di trattarli
+come separatori, e le parole si appiccicano:
+
+| Testo | `Str::slug` | `Slug::da` |
+|---|---|---|
+| `Sant'Angelo` | `santangelo` | `sant-angelo` |
+| `Caffè/Tè` | `caffete` | `caffe-te` |
+| `SEO/GEO — 2026` | `seogeo-2026` | `seo-geo-2026` |
+| `Attività & Servizi` | `attivita-servizi` | `attivita-e-servizi` |
+
+In italiano l'apostrofo è ovunque (dell'arte, l'azienda, un po'): non è un caso di
+confine, è il caso normale. Un titolo da cui non resta nulla (ideogrammi, soli emoji) dà
+stringa **vuota**: il form la segnala come obbligatoria e chi scrive ne sceglie uno,
+meglio che uno slug inventato e illeggibile.
+
+`Slug::regolaUnica()` è la regola di unicità per il sito corrente, usata da tutti e
+quattro i form. Senza, due nomi diversi che producono lo stesso slug arrivano al database
+e il redattore riceve una pagina di errore SQL invece di un messaggio nel campo. Il
+`where('site_id')` va messo a mano: la regola `unique` di Laravel interroga la **tabella**,
+non il modello, quindi il global scope di `BelongsToSite` non la tocca — senza, un tag
+"novita" di un cliente impedirebbe a tutti gli altri di averne uno.
+
 ## Categorie e tag
 
 Sono **due modelli scoped per sito**, `Category` e `Tag`, entrambi con unicità su

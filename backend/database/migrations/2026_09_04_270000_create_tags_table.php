@@ -1,10 +1,10 @@
 <?php
 
+use App\Support\Slug;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * I tag diventano un modello come le categorie.
@@ -78,7 +78,7 @@ return new class extends Migration
                     continue;
                 }
 
-                $slug = Str::slug($etichetta);
+                $slug = Slug::da($etichetta);
 
                 if ($slug === '') {
                     continue;
