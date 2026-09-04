@@ -147,6 +147,22 @@ aggiungere il modello alle esclusioni per far tornare il verde. `EXCLUDED_MODELS
 riservato ai modelli di piattaforma senza colonna di scoping (`Tenant`, `Plan`,
 `AdminUser`) e ogni voce richiede un commento che ne spieghi il perché.
 
+## Deprecation di stancl/tenancy
+
+`stancl/tenancy` 3.10 accede alla proprietà statica `$tenantIdColumn` direttamente sul
+trait, cosa deprecata da PHP 8.2, e lo fa a **ogni query** su un modello scoped per tenant.
+
+È silenziata in `AppServiceProvider::silenceDeprecationsOnConsole()` togliendo
+`E_DEPRECATED` da `error_reporting()`. Serve perché PsySH decide se stampare con
+`$errno & error_reporting()`, ignorando la propria `errorLoggingLevel`, e Laravel imposta
+`error_reporting(-1)` in bootstrap.
+
+Le deprecation restano registrate in `storage/logs/deprecations.log` nei comandi artisan e
+nelle richieste web. Dentro `tinker` no: PsySH sostituisce l'error handler di Laravel (non
+venivano registrate nemmeno prima, venivano solo stampate).
+
+Da rimuovere quando stancl sistemerà la cosa a monte.
+
 ## Architettura in breve
 
 - **Control plane** (`manage.slimcms.it`): pannello Filament separato, risorse `Tenant`,

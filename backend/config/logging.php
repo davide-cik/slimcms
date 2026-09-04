@@ -32,7 +32,14 @@ return [
     */
 
     'deprecations' => [
-        'channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null'),
+        // Le deprecation NON vengono buttate via: finiscono in un file loro,
+        // storage/logs/deprecations.log, cosi' restano consultabili senza
+        // sporcare l'output di tinker e dei comandi.
+        //
+        // Nota: env() converte la stringa "null" del .env in null PHP, e un
+        // canale null farebbe ricadere il log sul canale di default invece di
+        // usare quello voluto. Da qui il ?: invece del secondo argomento.
+        'channel' => env('LOG_DEPRECATIONS_CHANNEL') ?: 'deprecations_log',
         'trace' => env('LOG_DEPRECATIONS_TRACE', false),
     ],
 
@@ -116,6 +123,12 @@ return [
             'driver' => 'errorlog',
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+        ],
+
+        'deprecations_log' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/deprecations.log'),
+            'level' => 'debug',
         ],
 
         'null' => [
