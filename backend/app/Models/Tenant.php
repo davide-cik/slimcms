@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
-use Stancl\Tenancy\Database\Concerns\HasDomains;
 use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 
 /**
@@ -15,8 +14,14 @@ use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
  */
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
+    // NOTA: niente HasDomains e nessuna tabella "domains".
+    // La mappa dominio -> sito e' la colonna sites.domain, che e' l'unica
+    // fonte di verita'. La tabella domains di stancl mappa dominio -> TENANT,
+    // un livello troppo grossolano: un tenant puo' avere piu' siti con domini
+    // diversi. Due fonti di verita' sullo stesso dato produrrebbero
+    // risoluzioni sbagliate silenziose.
+
     use HasDatabase;
-    use HasDomains;
 
     public static function getCustomColumns(): array
     {

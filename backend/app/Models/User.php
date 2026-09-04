@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSiteViaPivot;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
@@ -25,6 +26,7 @@ use Illuminate\Support\Collection;
  */
 class User extends Authenticatable implements FilamentUser, HasTenants
 {
+    use BelongsToSiteViaPivot;
     use HasFactory;
     use Notifiable;
 
@@ -60,17 +62,35 @@ class User extends Authenticatable implements FilamentUser, HasTenants
      */
     public function getTenants(Panel $panel): array | Collection
     {
-        return $this->sites;
+        // withoutTenancy() e' necessario: Site porta il global scope di stancl,
+        // e dopo che l'utente ha scelto un sito la tenancy e' inizializzata.
+        // Senza questo, il selettore mostrerebbe solo i siti del tenant
+        // corrente e nasconderebbe silenziosamente gli altri a cui l'utente
+        // ha accesso. L'insieme dei siti accessibili lo definisce il pivot,
+        // non lo stato della tenancy.
+        return $this->sites()->withoutTenancy()->get();
     }
 
     public function canAccessTenant(Model $tenant): bool
     {
-        return $this->sites()->whereKey($tenant)->exists();
+        return $this->sites()->withoutTenancy()->whereKey($tenant)->exists();
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->sites()->exists();
+        return $this->sites()->withoutTenancy()->exists();
+    }
+
+    /**
+     * Il tenant (cliente) a cui appartiene questo utente, dedotto dai suoi siti.
+     *
+     * Un utente appartiene a UN SOLO cliente: puo' avere piu' mini siti, ma
+     * tutti dello stesso cliente (specifiche, sezione 5). Chi amministra piu'
+     * clienti usa il control plane, non il pannello di un sito.
+     */
+    public function tenantId(): ?string
+    {
+        return $this->sites()->withoutTenancy()->value('sites.tenant_id');
     }
 
     /**
