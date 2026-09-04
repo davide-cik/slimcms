@@ -121,14 +121,23 @@ if grep -rqE 'fonts\.(googleapis|gstatic)\.com' dist/*.html dist/**/*.html 2>/de
   errore "l'HTML referenzia Google Fonts: i font devono essere di prima parte."
 fi
 
-for f in dist/_astro/*.css; do
-  [[ -f "$f" ]] || continue
-  grep -oE 'url\(/fonts/[a-z0-9-]+\.woff2\)' "$f" | tr -d '()' | sed 's|url/|/|' | sort -u |
-  while read -r rel; do
-    [[ -s "dist${rel}" ]] || errore "il CSS referenzia ${rel}, che non esiste in dist/."
-  done
-done
-echo "    font: di prima parte, tutti presenti"
+# I riferimenti si raccolgono da TUTTI i fogli in una volta sola.
+# Ciclare foglio per foglio si rompeva appena Astro ne emetteva un secondo
+# senza font dentro: `grep` usciva 1, `pipefail` faceva uscire lo script, e il
+# deploy si fermava senza stampare un motivo. Un gate che fallisce muto e'
+# peggio di nessun gate, perche' si finisce per non fidarsene.
+riferimenti=$(grep -ohE 'url\(/fonts/[a-z0-9-]+\.woff2\)' dist/_astro/*.css 2>/dev/null \
+              | tr -d '()' | sed 's|url/|/|' | sort -u || true)
+
+# E se non ne trovasse nessuno il controllo passerebbe in silenzio, che e'
+# esattamente il caso da intercettare: i font sono di prima parte di proposito.
+[[ -n "$riferimenti" ]] || errore "il CSS non referenzia nessun font di prima parte."
+
+while read -r rel; do
+  [[ -s "dist${rel}" ]] || errore "il CSS referenzia ${rel}, che non esiste in dist/."
+done <<< "$riferimenti"
+
+echo "    font: di prima parte, $(wc -l <<< "$riferimenti") referenziati e presenti"
 
 # Ogni immagine citata dall'HTML deve esistere in dist/. Le foto dei
 # contenuti si scaricano dal backend in fase di build e si depositano qui: se

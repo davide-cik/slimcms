@@ -21,6 +21,10 @@ import re, sys, pathlib
 from collections import defaultdict
 
 TAG = re.compile(r'<[a-zA-Z][^>]*>')
+# Astro incorpora nella pagina i fogli piccoli invece di emetterli in
+# _astro/: guardare solo i file .css produce falsi allarmi su classi che
+# sono stilate benissimo, e il gate che grida al lupo si impara a ignorare.
+STILE_INLINE = re.compile(r'<style[^>]*>(.*?)</style>', re.S)
 CLASSI_TAG = re.compile(r'class="([^"]*)"')
 # .nome-classe eventualmente seguito da [data-astro-cid-xxxx]
 SELETTORE = re.compile(r'\.([a-zA-Z][\w-]*)(\[data-astro-cid-[\w-]+\])?')
@@ -70,14 +74,24 @@ def main(dist: str) -> int:
     problemi = 0
 
     for html_file in html_files:
-        scope_per_classe = analizza_html(html_file.read_text(encoding='utf-8'))
+        sorgente = html_file.read_text(encoding='utf-8')
+        scope_per_classe = analizza_html(sorgente)
         nome = html_file.relative_to(d)
+
+        # Le regole disponibili per QUESTA pagina: quelle dei fogli piu'
+        # quelle incorporate qui dentro. Non si mettono in comune fra pagine:
+        # una classe stilata inline nella pagina A e usata nuda nella B e'
+        # proprio il difetto che questo controllo esiste per trovare.
+        requisiti_pagina = defaultdict(set, {k: set(v) for k, v in requisiti.items()})
+        for blocco in STILE_INLINE.findall(sorgente):
+            for classe, scope in analizza_css(blocco).items():
+                requisiti_pagina[classe] |= scope
 
         senza_regola: list[str] = []
         scope_sbagliato: list[str] = []
 
         for classe, cids_elemento in scope_per_classe.items():
-            req = requisiti.get(classe)
+            req = requisiti_pagina.get(classe)
 
             if not req:
                 senza_regola.append(classe)
