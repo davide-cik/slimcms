@@ -50,7 +50,11 @@ class SitePageController extends Controller
             ->get()
             ->reject(fn (Page $p) => (bool) ($p->seo['noindex'] ?? false))
             ->map(fn (Page $p) => [
-                'loc' => 'https://' . $site->domain . ($p->slug === 'home' ? '/' : '/' . $p->slug),
+                // Slash finale SEMPRE: Astro genera <slug>/index.html, quindi il
+                // server serve 200 solo sulla forma con slash e risponde 301
+                // sull'altra. Una sitemap che elenca URL che redirigono fa
+                // pagare un salto in piu' a ogni passaggio del crawler.
+                'loc' => 'https://' . $site->domain . ($p->slug === 'home' ? '/' : '/' . $p->slug . '/'),
                 'lastmod' => $p->updated_at?->toIso8601String(),
                 'changefreq' => $p->seo['sitemap_change_freq'] ?? 'weekly',
                 'priority' => $p->seo['sitemap_priority'] ?? ($p->slug === 'home' ? '1.0' : '0.7'),

@@ -24,7 +24,7 @@ const editore = {
 };
 
 const grafo = grafoJsonLd(pagina, dominio, editore);
-const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug === 'home' ? '/' : `/${pagina.slug}`}`;
+const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug === 'home' ? '/' : `/${pagina.slug}/`}`;
 ---
 
 <html lang="it">

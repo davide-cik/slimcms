@@ -99,4 +99,16 @@ curl -sS -m 20 "$SITO/" | grep -q "${ATTESI[0]}" \
   || errore "il sito pubblicato non contiene \"${ATTESI[0]}\"."
 
 echo "    $SITO/ -> HTTP 200, contenuto verificato"
+
+# Ogni URL della sitemap deve rispondere 200 SENZA redirect: una sitemap che
+# elenca URL che redirigono fa pagare un salto in piu' a ogni crawl, ed e' il
+# tipo di difetto che non si vede guardando il sito.
+while read -r loc; do
+  codice=$(curl -sS -m 15 -o /dev/null -w '%{http_code}' "$loc" || echo 000)
+  if [[ "$codice" != "200" ]]; then
+    errore "la sitemap elenca $loc che risponde $codice invece di 200."
+  fi
+  echo "    sitemap: $loc -> 200"
+done < <(grep -oP '(?<=<loc>)[^<]+' dist/sitemap.xml)
+
 log "Fatto."

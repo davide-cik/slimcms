@@ -76,6 +76,27 @@ class SlimcmsPilotSeeder extends Seeder
             ]
         );
 
+        Page::updateOrCreate(
+            ['slug' => 'chi-siamo'],
+            [
+                'title' => 'Chi siamo',
+                'status' => 'published',
+                'publish_at' => now(),
+                'blocks' => [[
+                    'tipo' => 'hero',
+                    'occhiello' => 'La squadra',
+                    'titolo' => 'Chi siamo',
+                    'testo' => 'SlimCMS e sviluppato da Content is King Srl, a Varedo. Gestiamo mini siti per i nostri clienti da anni: la piattaforma nasce dai problemi che avevamo noi.',
+                ]],
+                'seo' => [
+                    'meta_title' => 'Chi siamo — SlimCMS',
+                    'meta_description' => 'SlimCMS e sviluppato da Content is King Srl, agenzia di Varedo che gestisce mini siti per i propri clienti.',
+                    'structured_summary' => 'SlimCMS e sviluppato da Content is King Srl, con sede a Varedo in provincia di Monza e Brianza. La piattaforma nasce dall esigenza di gestire molti mini siti di clienti senza mantenere altrettante installazioni separate.',
+                    'schema_type' => 'Organization',
+                ],
+            ]
+        );
+
         // Un articolo di blog reale, cosi' il pilota esercita anche il
         // percorso Post e non solo quello Page.
         $categoria = Category::firstOrCreate(

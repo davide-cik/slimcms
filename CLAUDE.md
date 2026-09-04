@@ -253,6 +253,44 @@ in console quel binding può non esserci, e la build finirebbe sul sito sbagliat
 Comandi utili: `php artisan slimcms:build-queue --site=<dominio>` forza una build completa
 ignorando il debounce; `GET /api/sites/{site}/builds` mostra lo stato.
 
+## Domini custom, SSL e routing edge
+
+**Il provisioning dei certificati richiede root e non è automatizzabile da qui.** Su questa
+macchina i vhost li gestisce HestiaCP, che ha già Let's Encrypt col proprio cron di rinnovo;
+la sua CLI però risponde `Permission denied` all'utente normale. `slimcms:provisiona-dominio`
+verifica tutto il verificabile e poi **stampa i comandi esatti** da eseguire con sudo,
+invece di fallire in modo opaco.
+
+L'ordine non è negoziabile: Let's Encrypt valida via HTTP, quindi **il DNS deve già puntare
+qui prima** di chiedere il certificato. Il comando si rifiuta di procedere senza DNS
+corretto (`--forza` per scavalcare): un tentativo fallito consuma quota verso i limiti di
+emissione, che sono stretti.
+
+`slimcms:monitora-certificati` gira ogni giorno alle 6:15 e verifica DNS e scadenza di ogni
+sito, con alert email sotto i 21 giorni. **Il rinnovo lo fa Hestia; questo verifica che
+l'abbia fatto** — è la differenza fra avere il rinnovo automatico e sapere che funziona
+(specifiche §11). I TLD riservati (`.test`, `.local`, …) sono esclusi: sono i siti demo, e
+un alert che si impara a ignorare è peggio di nessun alert.
+
+### Routing edge (§7.2)
+
+`slimcms:mappa-routing` genera la mappa dominio → sito in due formati: `routing.json` per
+un edge programmabile (Cloudflare Workers + KV) e `slimcms-map.conf`, una `map` nginx per il
+server attuale. In entrambi il **default è vuoto di proposito**: un dominio sconosciuto deve
+dare errore, non finire per sbaglio sul sito di un altro cliente.
+
+La mappa si rigenera **solo su eventi strutturali** — sito creato, dominio cambiato, sito
+cancellato — non a ogni pubblicazione: è il punto della §7.2, che la risoluzione del dominio
+non stia nel percorso di lettura. `SiteObserver` la richiama da solo.
+
+`GET /api/routing-map` la espone all'edge e richiede un token **di piattaforma** (`sites:*`):
+è l'elenco di tutti i clienti, non il contenuto di uno, quindi un token legato a un singolo
+sito riceve 403.
+
+Nota: gli alias middleware `abilities` e `ability` di Sanctum **non sono registrati da
+Laravel 12**. Sono in `bootstrap/app.php`; senza, una rotta che li usa dà 500 invece di
+applicare il controllo — un errore di sicurezza travestito da errore generico.
+
 ## Pubblicazione del frontend
 
 **Usa sempre `scripts/deploy-frontend.sh`.** Non lanciare `npm run build` seguito da
@@ -269,6 +307,13 @@ minima, frammenti di contenuto attesi realmente nell'HTML, sitemap con almeno un
 e infine `HTTP 200` più controllo del contenuto sul sito pubblicato.
 
 `--dry-run` fa build e verifica senza pubblicare.
+
+La sitemap è generata a ogni build dai dati dell'API, quindi si aggiorna da sola a ogni
+pubblicazione. Le URL portano **sempre lo slash finale**: Astro genera `<slug>/index.html`,
+quindi il server risponde 200 solo su quella forma e 301 sull'altra. Il gate di deploy
+verifica che ogni URL elencata risponda 200 senza redirect — una sitemap che elenca URL che
+redirigono fa pagare un salto in più a ogni passaggio del crawler, ed è un difetto che non
+si vede guardando il sito.
 
 Attenzione: `php artisan test` azzera il database **e i token API**. Dopo i test servono
 `php artisan db:seed` e un nuovo token per la build:

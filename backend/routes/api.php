@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\SitePageController;
 use App\Http\Controllers\Api\SitePostController;
 use App\Http\Resources\SiteResource;
 use App\Models\Site;
+use App\Services\MappaRouting;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,6 +40,12 @@ Route::prefix('sites/{site}')
         Route::get('builds', [BuildWebhookController::class, 'index']);
         Route::post('builds', [BuildWebhookController::class, 'store']);
     });
+
+// Mappa dominio -> sito per l'edge (specifiche 7.2). Richiede un token di
+// piattaforma (sites:*): e' l'elenco di TUTTI i clienti, non il contenuto di
+// uno, quindi un token legato a un singolo sito non basta.
+Route::get('routing-map', fn (MappaRouting $mappa) => response()->json(json_decode($mappa->json(), true)))
+    ->middleware(['auth:sanctum', 'abilities:sites:*']);
 
 Route::prefix('public')
     ->middleware(['site.domain', 'throttle:60,1'])
