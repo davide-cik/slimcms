@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Filament\Auth\MultiFactor\Http\Middleware\EnsureMultiFactorAuthenticationIsEnabled;
+use App\Http\Controllers\ImpersonazioneController;
+use App\Models\Impersonazione;
 use Filament\Facades\Filament;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,6 +38,15 @@ class RichiediMfaSoloAgliAdmin extends EnsureMultiFactorAuthenticationIsEnabled
             return $next($request);
         }
 
+        // Sessione aperta impersonando dal control plane: il secondo fattore
+        // e' GIA' stato dimostrato li', dove l'MFA e' obbligatoria per tutti.
+        // Chiederlo una seconda volta non aggiunge sicurezza — l'identita' e'
+        // la stessa persona, gia' verificata pochi secondi prima — e obbliga
+        // a iscrivere un secondo dispositivo per lo stesso essere umano.
+        if ($this->apertaDaAdminConMfa($request)) {
+            return $next($request);
+        }
+
         $eAdmin = $utente->sites()
             ->withoutTenancy()
             ->wherePivot('role', 'admin')
@@ -46,5 +57,28 @@ class RichiediMfaSoloAgliAdmin extends EnsureMultiFactorAuthenticationIsEnabled
         }
 
         return parent::handle($request, $next);
+    }
+
+    /**
+     * La sessione nasce da un'impersonazione aperta da un amministratore che
+     * aveva l'MFA attiva?
+     *
+     * Si verifica sul RECORD, non solo sulla presenza della chiave di
+     * sessione: cosi' l'esenzione poggia su un fatto registrato e verificabile
+     * a posteriori, non su un valore che sta solo nella sessione.
+     */
+    private function apertaDaAdminConMfa(Request $request): bool
+    {
+        $id = $request->session()->get(ImpersonazioneController::CHIAVE);
+
+        if ($id === null) {
+            return false;
+        }
+
+        return (bool) Impersonazione::with('adminUser')
+            ->whereKey($id)
+            ->first()
+            ?->adminUser
+            ?->haMfaAttiva();
     }
 }

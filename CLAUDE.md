@@ -378,7 +378,15 @@ ne ha bisogno finirebbe su una rotta inesistente.
 
 Quindi il pannello dichiara `isRequired: true` (così rotte e middleware esistono) e
 l'esenzione per i ruoli non amministrativi la applica `RichiediMfaSoloAgliAdmin`, che gira
-per richiesta. Segreto TOTP e codici di recupero sono **cifrati a riposo**
+per richiesta.
+
+Lo stesso middleware esenta anche le sessioni **aperte impersonando dal control plane**:
+lì l'MFA è obbligatoria per tutti, quindi il secondo fattore è già stato dimostrato pochi
+secondi prima dalla stessa persona. Chiederlo di nuovo non aggiungerebbe sicurezza e
+obbligherebbe a iscrivere due dispositivi per lo stesso essere umano. L'esenzione si
+verifica sul **record** di impersonazione (l'amministratore aveva davvero l'MFA attiva?),
+non sulla sola presenza della chiave di sessione: così poggia su un fatto registrato e
+verificabile a posteriori. Segreto TOTP e codici di recupero sono **cifrati a riposo**
 (`'encrypted'` cast): chi legge il database non deve poter rigenerare i codici di nessuno.
 
 ## Convenzioni di codice

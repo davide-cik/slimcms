@@ -88,6 +88,43 @@ class ImpersonazioneTest extends TestCase
         $this->assertNotNull($imp->fresh()->terminata_il, 'La fine dell\'accesso doveva restare registrata.');
     }
 
+    /**
+     * Entrando dal control plane la MFA del pannello contenuti non va
+     * richiesta di nuovo: il secondo fattore e' gia' stato dimostrato li',
+     * dove e' obbligatoria per tutti. Chiederlo due volte obbligherebbe a
+     * iscrivere due dispositivi per la stessa persona.
+     */
+    public function test_impersonando_non_viene_richiesta_una_seconda_mfa(): void
+    {
+        $this->admin->saveAppAuthenticationSecret(
+            app(\Filament\Auth\MultiFactor\App\AppAuthentication::class)->generateSecret()
+        );
+
+        // Il redattore e' admin sul sito, quindi senza esenzione la MFA
+        // scatterebbe.
+        $this->redattore->sites()->syncWithoutDetaching([$this->site->id => ['role' => 'admin']]);
+
+        $imp = Impersonazione::apri($this->admin, $this->redattore, $this->site);
+        $this->get(route('impersona.entra', $imp->token));
+
+        $this->get('/admin/' . $this->site->domain . '/pages')
+            ->assertSuccessful();
+    }
+
+    /** Se pero' l'amministratore NON aveva la MFA attiva, l'esenzione non
+     *  vale: non c'e' nessun secondo fattore da ereditare. */
+    public function test_senza_mfa_dell_amministratore_l_esenzione_non_vale(): void
+    {
+        $this->admin->saveAppAuthenticationSecret(null);
+        $this->redattore->sites()->syncWithoutDetaching([$this->site->id => ['role' => 'admin']]);
+
+        $imp = Impersonazione::apri($this->admin, $this->redattore, $this->site);
+        $this->get(route('impersona.entra', $imp->token));
+
+        $this->get('/admin/' . $this->site->domain . '/pages')
+            ->assertRedirect();
+    }
+
     /** L'attribuzione e' il motivo per cui esiste l'impersonazione invece di
      *  dare l'accesso diretto al super-admin. */
     public function test_resta_traccia_di_chi_ce_dietro(): void
