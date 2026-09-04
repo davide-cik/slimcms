@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="SlimCMS">
+  <title>SlimCMS</title>
+  <!-- Tre righe che si assottigliano: un documento compresso.
+       La riga piu' sottile e' il contenuto servito: quasi niente. -->
+  <rect x="4"  y="9"  width="32" height="6"   rx="1" fill="#0F6B4A"/>
+  <rect x="4"  y="19" width="24" height="3.5" rx="1" fill="#16181C"/>
+  <rect x="4"  y="27" width="16" height="1.5" rx="0.75" fill="#16181C" opacity="0.55"/>
+</svg>

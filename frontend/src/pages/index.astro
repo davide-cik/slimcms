@@ -1,17 +1,483 @@
 ---
+// Landing di slimcms.it.
+// Nota: oggi il contenuto e' inline. Diventera' il primo sito pilota servito
+// dalla piattaforma stessa (dogfooding): stessa struttura di blocchi e campi
+// SEO/GEO/AEO che ricevera' dall'API Laravel.
 
+const structuredSummary =
+  "SlimCMS e' una piattaforma CMS multitenant che sostituisce WordPress nella gestione di molti mini siti aziendali. Un solo pannello amministra tutti i siti; le pagine pubbliche sono generate staticamente e servite da CDN, senza chiamare il backend.";
+
+const keyFacts = [
+  "Un solo pannello di amministrazione per tutti i siti gestiti.",
+  "Le pagine pubbliche sono statiche: nessuna query al database quando un visitatore apre il sito.",
+  "Ogni pagina genera automaticamente JSON-LD, sitemap.xml e robots.txt.",
+  "L'isolamento fra i dati di clienti diversi e' applicato dal database in su, non dal frontend.",
+];
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "SlimCMS",
+  applicationCategory: "Content Management System",
+  operatingSystem: "Web",
+  description: structuredSummary,
+  url: "https://slimcms.it",
+  offers: { "@type": "Offer", priceCurrency: "EUR", price: "0" },
+};
+
+const capacita = [
+  {
+    etichetta: "Amministrazione",
+    titolo: "Venti siti, un pannello",
+    testo:
+      "Entri una volta e vedi tutti i siti che gestisci. Nessuna installazione da aggiornare per ognuno, nessun plugin che si rompe su uno e non sull'altro.",
+    macchina: '"tenant": { "sites": 20, "panels": 1 }',
+  },
+  {
+    etichetta: "Pubblicazione",
+    titolo: "Il visitatore non aspetta il database",
+    testo:
+      "Quando pubblichi, SlimCMS rigenera solo le pagine cambiate e le manda in CDN. Chi apre il sito riceve un file gia' pronto: il backend non viene nemmeno interpellato.",
+    macchina: '"render": "static", "origin_hits_per_view": 0',
+  },
+  {
+    etichetta: "Visibilita'",
+    titolo: "Scritto per chi legge, leggibile da chi indicizza",
+    testo:
+      "Oltre ai campi SEO classici, ogni pagina porta una sintesi in linguaggio naturale e un elenco di fatti verificabili: e' il formato che i motori generativi citano piu' volentieri.",
+    macchina: '"structured_summary": true, "key_facts": 4',
+  },
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>SlimCMS — un CMS per chi gestisce venti siti, non uno</title>
+    <meta name="description" content={structuredSummary} />
+    <link rel="canonical" href="https://slimcms.it/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SlimCMS — un CMS per chi gestisce venti siti, non uno" />
+    <meta property="og:description" content={structuredSummary} />
+    <meta property="og:url" content="https://slimcms.it/" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  </head>
+
+  <body>
+    <a class="skip" href="#contenuto">Vai al contenuto</a>
+
+    <header class="testata">
+      <a class="marchio" href="/">
+        <img src="/logo.svg" alt="" width="32" height="32" />
+        <span>SlimCMS</span>
+      </a>
+      <nav aria-label="Principale">
+        <a href="#capacita">Cosa fa</a>
+        <a href="#macchina">Per le macchine</a>
+        <a href="mailto:ciao@slimcms.it" class="nav-cta">Parlane con noi</a>
+      </nav>
+    </header>
+
+    <main id="contenuto">
+      <section class="apertura">
+        <p class="occhiello">Piattaforma CMS multitenant</p>
+        <h1>
+          Un CMS per chi gestisce<br />
+          <em>venti siti</em>, non uno.
+        </h1>
+        <p class="sommario">
+          SlimCMS sostituisce WordPress quando i siti da mantenere sono tanti e piccoli.
+          Un pannello solo per tutti. Pagine pubbliche generate staticamente, servite dalla
+          CDN, che non toccano mai il backend.
+        </p>
+        <div class="azioni">
+          <a class="bottone primario" href="mailto:ciao@slimcms.it">Richiedi una demo</a>
+          <a class="bottone" href="#capacita">Guarda cosa fa</a>
+        </div>
+      </section>
+
+      <!-- Firma della pagina: lo stesso contenuto, nei due registri in cui esiste.
+           A sinistra quello che legge una persona, a destra quello che legge un crawler. -->
+      <section class="doppio" id="macchina">
+        <div class="doppio-testa">
+          <span class="etichetta">Questa pagina, due volte</span>
+          <p>
+            Ogni pagina fatta con SlimCMS esiste in due versioni contemporaneamente. Quella
+            che stai leggendo, e quella qui sotto: la sola che vedono Google, Perplexity e
+            ChatGPT. La seconda non e' un ripensamento, si scrive insieme alla prima.
+          </p>
+        </div>
+
+        <div class="pannello-macchina">
+          <div class="pannello-barra">
+            <span class="punto"></span>
+            <span>schema.org/SoftwareApplication — slimcms.it/</span>
+          </div>
+          <pre><code>{JSON.stringify(jsonLd, null, 2)}</code></pre>
+        </div>
+
+        <div class="fatti">
+          <span class="etichetta">key_facts[]</span>
+          <ul>
+            {keyFacts.map((fatto) => <li>{fatto}</li>)}
+          </ul>
+        </div>
+      </section>
+
+      <section class="capacita" id="capacita">
+        {
+          capacita.map((c) => (
+            <article class="capacita-riga">
+              <span class="etichetta">{c.etichetta}</span>
+              <div class="capacita-corpo">
+                <h2>{c.titolo}</h2>
+                <p>{c.testo}</p>
+              </div>
+              <code class="capacita-macchina">{c.macchina}</code>
+            </article>
+          ))
+        }
+      </section>
+
+      <section class="chiusura">
+        <h2>Stiamo costruendo SlimCMS in pubblico.</h2>
+        <p>
+          La piattaforma e' in sviluppo attivo e slimcms.it e' il primo sito che gira sopra
+          di essa. Se gestisci molti siti piccoli e la manutenzione ti sta mangiando le
+          giornate, scrivici: cerchiamo i primi utilizzatori.
+        </p>
+        <a class="bottone primario" href="mailto:ciao@slimcms.it">ciao@slimcms.it</a>
+      </section>
+    </main>
+
+    <footer>
+      <img src="/logo.svg" alt="" width="26" height="26" />
+      <p>SlimCMS — piattaforma CMS multitenant</p>
+      <p class="fioco">Fatto in Italia</p>
+    </footer>
+
+    <style>
+      :root {
+        --carta: #f4f4f1;
+        --carta-alta: #fbfbf9;
+        --inchiostro: #16181c;
+        --inchiostro-tenue: #575d68;
+        --riga: #dcdcd4;
+        --segnale: #0f6b4a;
+        --macchina-fondo: #191d26;
+        --macchina-testo: #9aabc4;
+        --macchina-chiave: #7fd1a8;
+        --macchina-valore: #e0c169;
+
+        --display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+        --corpo: "Source Serif 4", Georgia, "Times New Roman", serif;
+        --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+        --misura: 1180px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--carta);
+        color: var(--inchiostro);
+        font-family: var(--corpo);
+        font-size: 17px;
+        line-height: 1.62;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .skip {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        background: var(--inchiostro);
+        color: var(--carta);
+        padding: 0.7rem 1.1rem;
+        z-index: 10;
+      }
+      .skip:focus { left: 0; }
+
+      :focus-visible {
+        outline: 2px solid var(--segnale);
+        outline-offset: 3px;
+      }
+
+      /* ---------- testata ---------- */
+
+      .testata {
+        max-width: var(--misura);
+        margin: 0 auto;
+        padding: 1.6rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .marchio {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        text-decoration: none;
+        color: var(--inchiostro);
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 1.12rem;
+        letter-spacing: -0.02em;
+      }
+
+      .testata nav {
+        display: flex;
+        align-items: center;
+        gap: 1.6rem;
+        font-family: var(--display);
+        font-size: 0.93rem;
+      }
+
+      .testata nav a {
+        color: var(--inchiostro-tenue);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        padding-bottom: 2px;
+        transition: color 0.15s, border-color 0.15s;
+      }
+      .testata nav a:hover { color: var(--inchiostro); border-bottom-color: var(--segnale); }
+
+      .nav-cta { color: var(--segnale) !important; font-weight: 500; }
+
+      /* ---------- apertura ---------- */
+
+      .apertura {
+        max-width: var(--misura);
+        margin: 0 auto;
+        padding: 5.5rem 1.5rem 4.5rem;
+      }
+
+      .occhiello,
+      .etichetta {
+        font-family: var(--mono);
+        font-size: 0.73rem;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--segnale);
+        margin: 0;
+      }
+
+      .apertura h1 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(2.6rem, 7.2vw, 5.1rem);
+        line-height: 1.02;
+        letter-spacing: -0.038em;
+        margin: 1.4rem 0 0;
+        max-width: 16ch;
+      }
+
+      .apertura h1 em {
+        font-style: normal;
+        color: var(--segnale);
+        /* la sottolineatura si ferma sotto la parola: e' il "taglio" del nome */
+        box-shadow: inset 0 -0.14em 0 rgba(15, 107, 74, 0.18);
+      }
+
+      .sommario {
+        max-width: 56ch;
+        margin: 1.9rem 0 0;
+        font-size: 1.19rem;
+        color: var(--inchiostro-tenue);
+      }
+
+      .azioni { display: flex; flex-wrap: wrap; gap: 0.85rem; margin-top: 2.4rem; }
+
+      .bottone {
+        display: inline-block;
+        font-family: var(--display);
+        font-size: 0.96rem;
+        font-weight: 500;
+        padding: 0.78rem 1.5rem;
+        border: 1px solid var(--riga);
+        border-radius: 2px;
+        text-decoration: none;
+        color: var(--inchiostro);
+        background: var(--carta-alta);
+        transition: border-color 0.15s, transform 0.15s;
+      }
+      .bottone:hover { border-color: var(--inchiostro); transform: translateY(-1px); }
+
+      .bottone.primario {
+        background: var(--segnale);
+        border-color: var(--segnale);
+        color: #fff;
+      }
+      .bottone.primario:hover { background: #0c5a3e; border-color: #0c5a3e; }
+
+      /* ---------- doppio registro (firma) ---------- */
+
+      .doppio {
+        max-width: var(--misura);
+        margin: 0 auto;
+        padding: 3rem 1.5rem 5rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2.2rem;
+        align-items: start;
+      }
+
+      .doppio-testa { grid-column: 1 / -1; max-width: 60ch; }
+      .doppio-testa p { margin: 0.9rem 0 0; font-size: 1.08rem; color: var(--inchiostro-tenue); }
+
+      .pannello-macchina {
+        background: var(--macchina-fondo);
+        border-radius: 3px;
+        overflow: hidden;
+        font-family: var(--mono);
+      }
+
+      .pannello-barra {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.7rem 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        font-size: 0.72rem;
+        color: #6b7a94;
+        letter-spacing: 0.02em;
+      }
+
+      .punto {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--macchina-chiave);
+        flex: none;
+      }
+
+      .pannello-macchina pre {
+        margin: 0;
+        padding: 1.15rem 1.1rem 1.4rem;
+        overflow-x: auto;
+        font-size: 0.79rem;
+        line-height: 1.72;
+        color: var(--macchina-testo);
+      }
+
+      .fatti {
+        border-left: 2px solid var(--segnale);
+        padding-left: 1.4rem;
+      }
+      .fatti ul { list-style: none; margin: 1rem 0 0; padding: 0; }
+      .fatti li {
+        padding: 0.72rem 0;
+        border-bottom: 1px solid var(--riga);
+        font-size: 1rem;
+      }
+      .fatti li:last-child { border-bottom: 0; }
+
+      /* ---------- capacita ---------- */
+
+      .capacita {
+        max-width: var(--misura);
+        margin: 0 auto;
+        padding: 0 1.5rem 4rem;
+        border-top: 1px solid var(--riga);
+      }
+
+      .capacita-riga {
+        display: grid;
+        grid-template-columns: 12rem 1fr 16rem;
+        gap: 2.2rem;
+        align-items: start;
+        padding: 2.9rem 0;
+        border-bottom: 1px solid var(--riga);
+      }
+      .capacita-riga:last-child { border-bottom: 0; }
+
+      .capacita-corpo h2 {
+        font-family: var(--display);
+        font-weight: 500;
+        font-size: 1.62rem;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+        margin: 0 0 0.7rem;
+      }
+      .capacita-corpo p { margin: 0; color: var(--inchiostro-tenue); max-width: 52ch; }
+
+      .capacita-macchina {
+        font-family: var(--mono);
+        font-size: 0.74rem;
+        line-height: 1.75;
+        color: var(--macchina-testo);
+        background: var(--macchina-fondo);
+        padding: 0.8rem 0.9rem;
+        border-radius: 3px;
+        display: block;
+        overflow-x: auto;
+      }
+
+      /* ---------- chiusura ---------- */
+
+      .chiusura {
+        max-width: var(--misura);
+        margin: 0 auto;
+        padding: 4.5rem 1.5rem 5.5rem;
+        border-top: 1px solid var(--riga);
+      }
+      .chiusura h2 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(1.8rem, 4vw, 2.7rem);
+        letter-spacing: -0.03em;
+        line-height: 1.12;
+        margin: 0;
+        max-width: 20ch;
+      }
+      .chiusura p {
+        max-width: 56ch;
+        margin: 1.2rem 0 2rem;
+        font-size: 1.1rem;
+        color: var(--inchiostro-tenue);
+      }
+
+      /* ---------- pie' di pagina ---------- */
+
+      footer {
+        max-width: var(--misura);
+        margin: 0 auto;
+        padding: 2rem 1.5rem 3.5rem;
+        border-top: 1px solid var(--riga);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-family: var(--display);
+        font-size: 0.88rem;
+        color: var(--inchiostro-tenue);
+      }
+      footer p { margin: 0; }
+      .fioco { margin-left: auto !important; opacity: 0.65; }
+
+      /* ---------- adattivo ---------- */
+
+      @media (max-width: 860px) {
+        .doppio { grid-template-columns: 1fr; }
+        .capacita-riga { grid-template-columns: 1fr; gap: 1rem; }
+        .apertura { padding-top: 3.5rem; }
+        .testata nav { gap: 1.1rem; font-size: 0.87rem; }
+      }
+    </style>
+  </body>
 </html>
