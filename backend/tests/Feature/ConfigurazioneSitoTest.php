@@ -51,6 +51,46 @@ class ConfigurazioneSitoTest extends TestCase
         $this->site->refresh();
     }
 
+    /**
+     * Il pannello e il layout Astro devono conoscere le STESSE disposizioni.
+     *
+     * E' la giuntura che ha prodotto quasi tutti i guasti del progetto: due
+     * elenchi scritti in file diversi, ciascuno verificato contro l'idea
+     * dell'altro. Una disposizione offerta e non resa darebbe una testata
+     * senza stile; una resa e non offerta sarebbe codice morto che nessuno
+     * puo' attivare.
+     */
+    public function test_le_disposizioni_della_testata_sono_le_stesse_nel_pannello_e_in_astro(): void
+    {
+        $sorgente = file_get_contents(__DIR__ . '/../../../frontend/src/layouts/Base.astro');
+
+        $this->assertNotFalse($sorgente, 'Base.astro non trovato: il percorso del monorepo e\' cambiato?');
+
+        preg_match("/const tipiTestata = \[(.*?)\]/s", (string) $sorgente, $trovato);
+        $this->assertNotEmpty($trovato, 'In Base.astro non c\'e\' piu\' l\'elenco tipiTestata.');
+
+        preg_match_all("/'([a-z]+)'/", $trovato[1], $inAstro);
+
+        $componente = Livewire::test(EditSite::class, ['record' => $this->site->getRouteKey()]);
+        $radio = $componente->instance()->form->getComponent(
+            fn ($c) => $c instanceof \Filament\Forms\Components\Radio && $c->getName() === 'layout_config.tipo'
+        );
+
+        $this->assertNotNull($radio, 'Il campo della disposizione non e\' nel form.');
+
+        $nelPannello = array_keys($radio->getOptions());
+
+        sort($nelPannello);
+        $daAstro = $inAstro[1];
+        sort($daAstro);
+
+        $this->assertSame($daAstro, $nelPannello, implode(' ', [
+            'Le disposizioni del pannello e quelle rese da Astro non coincidono.',
+            'Pannello: ' . implode(', ', $nelPannello) . '.',
+            'Astro: ' . implode(', ', $daAstro) . '.',
+        ]));
+    }
+
     public function test_la_testata_si_configura_dal_pannello(): void
     {
         $this->modifica([

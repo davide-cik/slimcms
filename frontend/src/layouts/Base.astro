@@ -46,6 +46,36 @@ const marchio = testata.nome_visibile || nomeSito;
 const mostraLogo = testata.mostra_logo !== false;
 const vociMenu = testata.voci ?? [];
 
+// Un tipo scritto a mano nel database, o rimasto da una versione vecchia,
+// non deve produrre una testata senza stile: si ricade sulla disposizione
+// predefinita, che e' quella che tutti i siti avevano.
+const tipiTestata = ['semplice', 'centrata', 'divisa', 'compatta'] as const;
+const tipoTestata = tipiTestata.includes(testata.tipo as (typeof tipiTestata)[number])
+  ? (testata.tipo as (typeof tipiTestata)[number])
+  : 'semplice';
+
+const testataFissa = testata.fissa === true;
+
+const barra = testata.barra ?? {};
+const barraPiena = Boolean(barra.testo || barra.telefono || barra.email);
+
+/*
+ * Disposizione "divisa": meta' voci per lato.
+ *
+ * La regola e' fissata qui e non lasciata a un arrotondamento: con un numero
+ * dispari la voce in piu' va a destra, e la voce in evidenza ci va sempre,
+ * perche' e' l'azione e sta dove l'occhio finisce. Senza questa regola due
+ * siti con lo stesso numero di voci si disporrebbero diversamente a seconda
+ * dell'ordine in cui sono state inserite.
+ */
+const ordinarie = vociMenu.filter((v) => !v.evidenza);
+const inEvidenza = vociMenu.filter((v) => v.evidenza);
+const vociSinistra = ordinarie.slice(0, Math.floor(ordinarie.length / 2));
+const vociDestra = [...ordinarie.slice(Math.floor(ordinarie.length / 2)), ...inEvidenza];
+
+/** Il telefono come lo vuole un href: senza spazi ne' punteggiatura. */
+const telefonoUrl = (n: string): string => `tel:${n.replace(/[^+\d]/g, '')}`;
+
 const pie = sito?.footer_config ?? {};
 const tipoPie = pie.tipo === 'colonne' ? 'colonne' : 'semplice';
 const colonnePie = Math.min(3, Math.max(1, Number(pie.colonne ?? 3)));
@@ -140,18 +170,62 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
   <body style={variabiliTema}>
     <a class="skip" href="#contenuto">Vai al contenuto</a>
 
-    <header class="testata">
-      <a class="marchio" href="/">
-        {mostraLogo && <img src={sito?.logo_path ?? '/logo.svg'} alt="" width="32" height="32" />}
-        <span>{marchio}</span>
-      </a>
-      {vociMenu.length > 0 && (
-        <nav aria-label="Principale">
-          {vociMenu.map((v) => (
-            <a href={v.url} class={v.evidenza ? 'nav-cta' : undefined}>{v.etichetta}</a>
-          ))}
-        </nav>
+    <header class:list={['testata', `t-${tipoTestata}`, { fissa: testataFissa }]} data-testata>
+      {barraPiena && (
+        <div class="barra-servizio">
+          {barra.testo && <span>{barra.testo}</span>}
+          {barra.telefono && <a href={telefonoUrl(barra.telefono)}>{barra.telefono}</a>}
+          {barra.email && <a href={`mailto:${barra.email}`}>{barra.email}</a>}
+        </div>
       )}
+
+      <div class="testata-interno">
+        {/* Le voci del menu stanno nel documento UNA volta sola. Su telefono
+            non si duplica l'elenco dentro un pannello a parte: cambia solo
+            come e' disposto lo stesso <nav>, cosi' uno screen reader non
+            legge due volte la stessa navigazione. */}
+        {tipoTestata === 'divisa' && vociSinistra.length > 0 && (
+          <nav id="menu-sinistra" class="menu menu-lato" aria-label="Principale">
+            {vociSinistra.map((v) => (
+              <a href={v.url} class={v.evidenza ? 'nav-cta' : undefined}>{v.etichetta}</a>
+            ))}
+          </nav>
+        )}
+
+        <a class="marchio" href="/">
+          {mostraLogo && <img src={sito?.logo_path ?? '/logo.svg'} alt="" width="32" height="32" />}
+          <span>{marchio}</span>
+        </a>
+
+        {tipoTestata === 'divisa'
+          ? vociDestra.length > 0 && (
+              <nav id="menu-destra" class="menu menu-lato" aria-label={vociSinistra.length > 0 ? 'Secondaria' : 'Principale'}>
+                {vociDestra.map((v) => (
+                  <a href={v.url} class={v.evidenza ? 'nav-cta' : undefined}>{v.etichetta}</a>
+                ))}
+              </nav>
+            )
+          : vociMenu.length > 0 && (
+              <nav id="menu-principale" class="menu" aria-label="Principale">
+                {vociMenu.map((v) => (
+                  <a href={v.url} class={v.evidenza ? 'nav-cta' : undefined}>{v.etichetta}</a>
+                ))}
+              </nav>
+            )}
+
+        {vociMenu.length > 0 && (
+          <button
+            type="button"
+            class="pulsante-menu"
+            aria-expanded="false"
+            aria-controls={tipoTestata === 'divisa' ? 'menu-sinistra menu-destra' : 'menu-principale'}
+            data-apri-menu
+          >
+            <span class="tratti" aria-hidden="true"></span>
+            Menu
+          </button>
+        )}
+      </div>
     </header>
 
     <main id="contenuto">
@@ -202,6 +276,54 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
         </p>
       )}
     </footer>
+
+    {/*
+      Il pulsante del menu e' l'unico JavaScript del sito, ed e' inline: sono
+      poche righe e caricarle da un file costerebbe una richiesta in piu' per
+      qualcosa che serve al primo tocco. Senza JavaScript il menu resta
+      visibile (la regola che lo nasconde vale solo da qui in poi), quindi la
+      navigazione non si perde mai.
+    */}
+    <script is:inline>
+      (() => {
+        const testata = document.querySelector('[data-testata]');
+        const pulsante = testata?.querySelector('[data-apri-menu]');
+
+        if (!testata || !pulsante) return;
+
+        // La regola CSS che nasconde il menu si attiva solo ora: se lo script
+        // non gira, il menu resta aperto e leggibile invece che irraggiungibile.
+        testata.dataset.jsAttivo = '';
+
+        const chiudi = () => {
+          delete testata.dataset.aperto;
+          pulsante.setAttribute('aria-expanded', 'false');
+        };
+
+        pulsante.addEventListener('click', () => {
+          const aperto = testata.dataset.aperto !== undefined;
+
+          if (aperto) chiudi();
+          else {
+            testata.dataset.aperto = '';
+            pulsante.setAttribute('aria-expanded', 'true');
+          }
+        });
+
+        // Esc chiude e riporta il fuoco al pulsante: chi naviga da tastiera
+        // non deve attraversare tutto il menu per uscirne.
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && testata.dataset.aperto !== undefined) {
+            chiudi();
+            pulsante.focus();
+          }
+        });
+
+        // Un collegamento interno alla pagina non ricarica nulla: senza
+        // questo il menu resterebbe aperto sopra il contenuto raggiunto.
+        testata.querySelectorAll('.menu a').forEach((a) => a.addEventListener('click', chiudi));
+      })();
+    </script>
 
     <!--
       is:global e' necessario, non una scorciatoia: queste classi sono il
@@ -330,7 +452,37 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
 
       /* ---------- testata ---------- */
 
+      /* La testata e' un contenitore a tutta larghezza: e' il suo INTERNO
+         ad essere incolonnato. Senza questa separazione una testata fissa o
+         con barra di servizio mostrerebbe lo sfondo della pagina ai lati. */
       .testata {
+        background: var(--carta);
+        border-bottom: 1px solid transparent;
+      }
+
+      .testata.fissa {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        border-bottom-color: var(--riga);
+      }
+
+      .barra-servizio {
+        max-width: var(--misura);
+        margin: 0 auto;
+        padding: 0.45rem 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 1.4rem;
+        font-family: var(--display);
+        font-size: 0.8rem;
+        color: var(--inchiostro-tenue);
+        border-bottom: 1px solid var(--riga);
+      }
+      .barra-servizio a { color: var(--segnale); text-decoration: none; }
+      .barra-servizio a:hover { text-decoration: underline; }
+
+      .testata-interno {
         max-width: var(--misura);
         margin: 0 auto;
         padding: 1.6rem 1.5rem;
@@ -338,8 +490,68 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
         align-items: center;
         justify-content: space-between;
         gap: 1.5rem;
-        flex-wrap: wrap;
       }
+
+      /* --- disposizione: semplice --- */
+      /* Non e' ridondante con la regola di base: e' cio' che DEFINISCE questa
+         disposizione, e le altre tre la sovrascrivono. Scritta qui, cambiare
+         il valore di base non cambia in silenzio anche questa. */
+      .t-semplice .testata-interno { justify-content: space-between; }
+
+      /* --- disposizione: centrata --- */
+      .t-centrata .testata-interno {
+        flex-direction: column;
+        justify-content: center;
+        gap: 1.1rem;
+      }
+      .t-centrata .marchio { font-size: 1.35rem; }
+
+      /* --- disposizione: divisa --- */
+      /* Le due meta' crescono in egual misura e il marchio resta al centro
+         ottico anche se un lato ha etichette piu' lunghe dell'altro. */
+      .t-divisa .menu-lato { flex: 1 1 0; }
+      .t-divisa #menu-sinistra { justify-content: flex-end; }
+      .t-divisa #menu-destra { justify-content: flex-start; }
+
+      /* --- disposizione: compatta --- */
+      /* Il menu sta dietro il pulsante a ogni larghezza, non solo su telefono.
+         Nascosto SOLO se lo script che lo riapre sta girando: altrimenti il
+         pulsante sarebbe inerte e la navigazione irraggiungibile. */
+      .t-compatta[data-js-attivo] .menu { display: none; }
+      .t-compatta .pulsante-menu { display: inline-flex; }
+      .t-compatta[data-aperto] .menu { display: flex; }
+
+      /* --- pulsante del menu --- */
+      .pulsante-menu {
+        display: none;
+        align-items: center;
+        gap: 0.55rem;
+        background: none;
+        border: 1px solid var(--riga);
+        border-radius: 2px;
+        padding: 0.5rem 0.85rem;
+        font-family: var(--display);
+        font-size: 0.9rem;
+        color: var(--inchiostro);
+        cursor: pointer;
+      }
+      .pulsante-menu:hover { border-color: var(--inchiostro); }
+
+      /* I tre tratti sono decorativi: il pulsante ha gia' la parola "Menu",
+         che e' cio' che viene annunciato. */
+      .tratti,
+      .tratti::before,
+      .tratti::after {
+        display: block;
+        width: 16px;
+        height: 1.5px;
+        background: currentColor;
+      }
+      .tratti { position: relative; }
+      .tratti::before,
+      .tratti::after { content: ''; position: absolute; left: 0; }
+      .tratti::before { top: -5px; }
+      .tratti::after { top: 5px; }
 
       .marchio {
         display: inline-flex;
@@ -353,7 +565,7 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
         letter-spacing: -0.02em;
       }
 
-      .testata nav {
+      .menu {
         display: flex;
         align-items: center;
         gap: 1.6rem;
@@ -361,14 +573,14 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
         font-size: 0.93rem;
       }
 
-      .testata nav a {
+      .menu a {
         color: var(--inchiostro-tenue);
         text-decoration: none;
         border-bottom: 1px solid transparent;
         padding-bottom: 2px;
         transition: color 0.15s, border-color 0.15s;
       }
-      .testata nav a:hover { color: var(--inchiostro); border-bottom-color: var(--segnale); }
+      .menu a:hover { color: var(--inchiostro); border-bottom-color: var(--segnale); }
 
       .nav-cta { color: var(--segnale) !important; font-weight: 500; }
 
@@ -646,7 +858,36 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
         .pie-colonne { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .capacita-riga { grid-template-columns: 1fr; gap: 1rem; }
         .apertura { padding-top: 3.5rem; }
-        .testata nav { gap: 1.1rem; font-size: 0.87rem; }
+        .menu { gap: 1.1rem; font-size: 0.87rem; }
+
+        /* Su telefono il menu passa dietro il pulsante, in ogni
+           disposizione. Prima, con piu' di quattro voci, andava a capo su
+           due righe e si accavallava al marchio. */
+        .testata-interno { flex-wrap: wrap; }
+        .t-centrata .testata-interno { flex-direction: row; }
+
+        .testata[data-js-attivo] .menu { display: none; }
+
+        .menu {
+          flex-basis: 100%;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 0;
+          border-top: 1px solid var(--riga);
+          margin-top: 0.4rem;
+        }
+        .menu a { padding: 0.85rem 0; border-bottom: 1px solid var(--riga); }
+        .menu a:last-child { border-bottom: 0; }
+
+        .testata[data-aperto] .menu { display: flex; }
+        .t-divisa .menu-lato { flex: 1 1 100%; }
+        .t-divisa #menu-sinistra,
+        .t-divisa #menu-destra { justify-content: stretch; }
+        /* La meta' di destra segue quella di sinistra senza stacco: aperte
+           sono un elenco solo. */
+        .t-divisa[data-aperto] #menu-destra { border-top: 0; margin-top: 0; }
+
+        .pulsante-menu { display: inline-flex; }
       }
 
       @media (max-width: 640px) {

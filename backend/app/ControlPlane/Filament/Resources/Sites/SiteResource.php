@@ -161,6 +161,21 @@ class SiteResource extends Resource
             Section::make('Testata')
                 ->description('Il marchio e il menu in cima a ogni pagina del sito.')
                 ->schema([
+                    Radio::make('layout_config.tipo')
+                        ->label('Disposizione')
+                        ->options([
+                            'semplice' => 'Semplice — marchio a sinistra, menu a destra',
+                            'centrata' => 'Centrata — marchio sopra, menu sotto',
+                            'divisa' => 'Divisa — meta menu, marchio, meta menu',
+                            'compatta' => 'Compatta — solo il marchio, menu dietro un pulsante',
+                        ])
+                        ->default('semplice')
+                        ->columnSpanFull(),
+
+                    Toggle::make('layout_config.fissa')
+                        ->label('Resta in alto scorrendo')
+                        ->helperText('Su pagine lunghe tiene il menu sempre raggiungibile. Ruba una striscia di schermo: su telefono la testata si riduce da sola.'),
+
                     Toggle::make('layout_config.mostra_logo')
                         ->label('Mostra il logo accanto al nome')
                         ->default(true),
@@ -186,6 +201,24 @@ class SiteResource extends Resource
                         ->reorderable()
                         ->itemLabel(fn (array $state): ?string => $state['etichetta'] ?? null)
                         ->addActionLabel('Aggiungi voce'),
+
+                    // La riga sottile sopra la testata: telefono, email o un
+                    // avviso. Compare solo se almeno un campo e' pieno, cosi'
+                    // non resta una striscia vuota su chi non la usa.
+                    TextInput::make('layout_config.barra.testo')
+                        ->label('Barra di servizio: avviso')
+                        ->maxLength(120)
+                        ->placeholder('Consegne in 24h in tutta Italia'),
+
+                    TextInput::make('layout_config.barra.telefono')
+                        ->label('Barra di servizio: telefono')
+                        ->tel()
+                        ->maxLength(40),
+
+                    TextInput::make('layout_config.barra.email')
+                        ->label('Barra di servizio: email')
+                        ->email()
+                        ->maxLength(120),
                 ])->columns(2),
 
             Section::make('Footer')

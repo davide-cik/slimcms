@@ -38,6 +38,7 @@ class ConfigurazioneSitoPilotaSeeder extends Seeder
             // da qui in poi si cambiano dal pannello, senza toccare il
             // codice e senza un deploy.
             'layout_config' => [
+                'tipo' => 'semplice',
                 'mostra_logo' => true,
                 'nome_visibile' => 'SlimCMS',
                 'voci' => [

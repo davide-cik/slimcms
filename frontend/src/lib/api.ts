@@ -98,9 +98,26 @@ export interface VoceMenu {
   etichetta: string;
   url: string;
   evidenza?: boolean;
+  /**
+   * Sottovoci. Il pannello non le offre ancora: il tipo le prevede perche'
+   * aggiungerle piu' avanti non debba diventare una migrazione dei dati gia'
+   * salvati di tutti i siti.
+   */
+  voci?: VoceMenu[];
 }
 
+export type TipoTestata = 'semplice' | 'centrata' | 'divisa' | 'compatta';
+
 export interface ConfigLayout {
+  tipo?: TipoTestata;
+  /** La testata resta in alto mentre si scorre. */
+  fissa?: boolean;
+  /** Riga di servizio sopra la testata: compare solo se ha almeno un campo. */
+  barra?: {
+    testo?: string;
+    telefono?: string;
+    email?: string;
+  };
   mostra_logo?: boolean;
   nome_visibile?: string;
   voci?: VoceMenu[];
