@@ -68,28 +68,8 @@ class SlimcmsPilotSeeder extends Seeder
                 'title' => 'Un CMS per chi gestisce venti siti, non uno',
                 'status' => 'published',
                 'publish_at' => now(),
-                'blocks' => [
-                    [
-                        'tipo' => 'hero',
-                        'occhiello' => 'Piattaforma CMS multitenant',
-                        'titolo' => 'Un CMS per chi gestisce venti siti, non uno.',
-                        'testo' => 'SlimCMS sostituisce WordPress quando i siti da mantenere sono tanti e piccoli. Un pannello solo per tutti. Pagine pubbliche generate staticamente, servite dalla CDN, che non toccano mai il backend.',
-                    ],
-                ],
-                'seo' => [
-                    'meta_title' => 'SlimCMS — un CMS per chi gestisce venti siti, non uno',
-                    'meta_description' => 'Piattaforma CMS multitenant: un pannello per tutti i siti, pagine statiche servite da CDN, SEO/GEO/AEO integrati.',
-                    'canonical_url' => 'https://slimcms.it/',
-                    'noindex' => false,
-                    'structured_summary' => "SlimCMS e' una piattaforma CMS multitenant che sostituisce WordPress nella gestione di molti mini siti aziendali. Un solo pannello amministra tutti i siti; le pagine pubbliche sono generate staticamente e servite da CDN, senza chiamare il backend.",
-                    'key_facts' => [
-                        'Un solo pannello di amministrazione per tutti i siti gestiti.',
-                        'Le pagine pubbliche sono statiche: nessuna query al database quando un visitatore apre il sito.',
-                        'Ogni pagina genera automaticamente JSON-LD, sitemap.xml e robots.txt.',
-                        "L'isolamento fra i dati di clienti diversi e' applicato dal database in su, non dal frontend.",
-                    ],
-                    'schema_type' => 'SoftwareApplication',
-                ],
+                'blocks' => ContenutoHomeSlimcms::blocchi(),
+                'seo' => ContenutoHomeSlimcms::seo(),
             ]
         );
 

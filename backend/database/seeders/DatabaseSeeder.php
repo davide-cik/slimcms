@@ -2,24 +2,22 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Ricostruisce l'ambiente di sviluppo da zero.
+ *
+ * Serve dopo ogni `php artisan test`, che azzera il database
+ * (RefreshDatabase fa migrate:fresh). Il contenuto reale di slimcms.it
+ * sta in ContenutoHomeSlimcms, quindi e' interamente riproducibile.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            SlimcmsPilotSeeder::class,
+            DemoMultiTenantSeeder::class,
         ]);
     }
 }
