@@ -67,8 +67,16 @@ class ProvisionaDominio extends Command
 
         // 2. Vhost e certificato
         $utente = config('slimcms.utente_hosting');
+        $ip = config('slimcms.ip_server');
+
+        // L'IP va SEMPRE passato esplicitamente. Senza, Hestia usa l'IP di
+        // default dell'utente, che su questo server e' un indirizzo interno
+        // (10.0.0.2): il vhost nasce in ascolto li', le richieste da internet
+        // non lo incontrano mai e cadono sul vhost di default. Il sintomo e'
+        // fuorviante, perche' Let's Encrypt fallisce con un 404 sul percorso
+        // di validazione e sembra un problema di ACME.
         $comandi = [
-            "v-add-domain {$utente} {$dominio}",
+            "v-add-domain {$utente} {$dominio} {$ip}",
             "v-add-letsencrypt-domain {$utente} {$dominio}",
         ];
 

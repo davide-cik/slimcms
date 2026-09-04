@@ -26,9 +26,21 @@ usato dai visitatori.
 ## 2. Vhost del control plane
 
 ```bash
-sudo /usr/local/hestia/bin/v-add-domain claudio manage.slimcms.it
+# L'IP va SEMPRE passato esplicitamente.
+sudo /usr/local/hestia/bin/v-add-domain claudio manage.slimcms.it 49.13.157.237
 sudo /usr/local/hestia/bin/v-add-letsencrypt-domain claudio manage.slimcms.it
 ```
+
+> **Perché l'IP esplicito.** Senza, Hestia usa l'IP di default dell'utente, che
+> su questo server è un indirizzo **interno** (`10.0.0.2`). Il vhost nasce in
+> ascolto lì, le richieste da internet non lo incontrano mai e cadono sul vhost
+> di default. Il sintomo è fuorviante: Let's Encrypt fallisce con un 404 sul
+> percorso di validazione e sembra un problema di ACME, mentre è di routing.
+> Se capita, si corregge senza ricreare il dominio:
+>
+> ```bash
+> sudo /usr/local/hestia/bin/v-change-web-domain-ip claudio <dominio> 49.13.157.237 yes
+> ```
 
 Poi sostituire la configurazione generata con
 `scripts/nginx/manage.slimcms.it.conf.template`, che punta la document root
