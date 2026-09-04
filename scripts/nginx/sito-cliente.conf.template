@@ -1,4 +1,10 @@
 # Template vhost per un sito SlimCMS.
+#
+# ATTENZIONE: questo template assume nginx + PHP-FPM diretto. Su QUESTO server
+# Hestia usa nginx davanti ad Apache (proxy_pass verso :8443) e PHP lo serve
+# Apache. Il template resta come riferimento della forma voluta, ma non e'
+# installabile cosi' com'e': vedi scripts/DEPLOY.md, sezione 4, per le tre
+# strade possibili.
 # Sostituire {{DOMINIO}} e installare come root.
 #
 # Il sito e' statico: nginx serve i file generati da Astro senza toccare PHP.

@@ -42,9 +42,23 @@ sudo /usr/local/hestia/bin/v-add-letsencrypt-domain claudio manage.slimcms.it
 > sudo /usr/local/hestia/bin/v-change-web-domain-ip claudio <dominio> 49.13.157.237 yes
 > ```
 
-Poi sostituire la configurazione generata con
-`scripts/nginx/manage.slimcms.it.conf.template`, che punta la document root
-all'applicazione invece che a una cartella statica.
+Poi puntare la document root all'applicazione. **Non modificare a mano i file
+in `/home/claudio/conf/web/`**: Hestia li rigenera e le modifiche si perdono.
+C'è un comando nativo:
+
+```bash
+sudo /usr/local/hestia/bin/v-change-web-domain-docroot \
+  claudio manage.slimcms.it slimcms-app public
+```
+
+Questo imposta la docroot a `/home/claudio/web/slimcms-app/public` e sopravvive
+ai rebuild di Hestia.
+
+> **Nota sull'architettura di Hestia su questo server:** nginx sta *davanti ad
+> Apache* e gli inoltra tutto ciò che non è un file statico (`proxy_pass` verso
+> `:8443`). PHP lo serve Apache, non PHP-FPM direttamente. `AllowOverride All`
+> è già attivo, quindi il `.htaccess` di Laravel funziona senza altre
+> modifiche.
 
 ## 3. Applicazione
 
@@ -70,10 +84,29 @@ finirci: il `.env` di produzione si scrive direttamente sul server.
 
 ## 4. Vhost dei siti dei clienti
 
-Ogni sito usa `scripts/nginx/sito-cliente.conf.template`: statico per tutto,
-tranne `/admin` e `/api` che vanno a PHP. Non c'è una copia dell'applicazione
-per sito — è sempre la stessa, e `ResolveSiteFromDomain` capisce di quale sito
-si tratta dall'`Host` della richiesta.
+**Questo pezzo non è ancora risolto e va deciso prima del primo cliente.**
+
+Un sito cliente deve servire due cose sullo stesso dominio: i file statici
+generati da Astro, e `/admin` più `/api` che devono arrivare a Laravel. Con
+nginx+PHP-FPM sarebbe una `location`, e `scripts/nginx/sito-cliente.conf.template`
+mostra quella forma. Ma **su questo server Hestia usa nginx davanti ad Apache**,
+e la docroot di un dominio è una sola: o la cartella statica, o l'applicazione.
+
+Tre strade, da valutare:
+
+1. **Template Hestia personalizzato** (`/usr/local/hestia/data/templates/web/nginx/`)
+   con una `location ~ ^/(admin|api)` che salta il proxy verso Apache e va
+   all'applicazione. È la via pulita, ma richiede di mantenere un template.
+2. **Admin su un sottodominio della piattaforma** invece che sul dominio del
+   cliente: `cliente.slimcms.it/admin` anziché `cliente.it/admin`. Devia dalle
+   specifiche §8, ma elimina il problema e semplifica anche i certificati.
+3. **Docroot all'applicazione** e Astro che pubblica dentro `public/siti/<dominio>/`,
+   con Laravel che serve i file statici. Semplice da configurare, ma rimette
+   Laravel nel percorso di lettura pubblico, cioè annulla il vantaggio
+   architetturale dell'intero progetto. **Da scartare.**
+
+`ResolveSiteFromDomain` funziona in tutti e tre i casi: capisce di quale sito
+si tratta dall'`Host`, e non c'è mai una copia dell'applicazione per sito.
 
 ## 5. Verifica
 
