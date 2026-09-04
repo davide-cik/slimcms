@@ -15,12 +15,17 @@ costruire, leggi la specifica; qui trovi il *come* e i vincoli non negoziabili.
 | Laravel | ^12.0 | **non** aggiornare a 13 senza prima aggiornare PHP |
 | Filament | ^5.0 | Livewire 4. MFA/TOTP nativa (`Auth\MultiFactor\App\AppAuthentication` + middleware `EnsureMultiFactorAuthenticationIsEnabled`): nessun package extra |
 | Multitenancy | `stancl/tenancy` ^3.10 | modello **single database** con scoping per colonna |
-| Database | MariaDB 10.11 (locale, attiva) | `utf8mb4` |
+| Database | MariaDB 10.6.23 **remota su `10.0.0.3`** | db `claudio_slimcms`, utente `claudio_slimcms`. NON è il MariaDB locale |
 | Queue / cache | Redis 6.0 (locale, attivo) | driver `database` accettabile solo in test |
 | Frontend | Astro, output `hybrid` | Node 24.13 |
 | Auth API | Laravel Sanctum ^4 | token per il worker di build Astro |
 
 Docker **non** è disponibile su questa macchina: tutto gira su servizi di sistema.
+
+Il database è **remoto** (`10.0.0.3`), non locale: sulla macchina di sviluppo gira anche una
+MariaDB locale che **non c'entra nulla** con il progetto — non puntarci mai. Redis invece è
+quello locale. L'utente DB ha `ALL PRIVILEGES` solo su `claudio_slimcms`.*: non può creare
+altri database, quindi il database di test va richiesto a chi amministra `10.0.0.3`.
 
 ## Layout monorepo
 
@@ -40,7 +45,7 @@ Eseguire sempre da `backend/` (o `frontend/`), mai dalla radice.
 # backend
 php artisan serve                     # dev server
 php artisan migrate                   # migrazioni
-php artisan test                      # suite completa
+php artisan test                      # suite completa (richiede il db claudio_slimcms_test)
 php artisan test --filter=TenantScope # il test di sicurezza multitenant (vedi sotto)
 php artisan queue:work --queue=builds,default
 php artisan horizon                   # dashboard code
