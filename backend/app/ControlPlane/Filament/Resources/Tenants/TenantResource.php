@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Manage\Resources\Tenants;
+namespace App\ControlPlane\Filament\Resources\Tenants;
 
 use App\Models\Tenant;
 use BackedEnum;

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
@@ -77,6 +78,12 @@ class Site extends Model implements HasMedia
         $this->addMediaConversion('web')
             ->fit(Fit::Max, 1600, 1600)
             ->nonQueued();
+    }
+
+    /** I redattori assegnati a questo sito, col ruolo sul pivot. */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withPivot('role')->withTimestamps();
     }
 
     public function pages(): HasMany

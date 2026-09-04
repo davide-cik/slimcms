@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\AdminUser;
+use App\ControlPlane\Models\AdminUser;
 use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;

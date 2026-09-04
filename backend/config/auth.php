@@ -78,7 +78,7 @@ return [
         // Control plane: tabella e modello separati dai redattori.
         'admin_users' => [
             'driver' => 'eloquent',
-            'model' => \App\Models\AdminUser::class,
+            'model' => \App\ControlPlane\Models\AdminUser::class,
         ],
 
         // 'users' => [

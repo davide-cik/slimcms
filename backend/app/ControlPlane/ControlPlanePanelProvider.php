@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Providers\Filament;
+namespace App\ControlPlane;
 
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -20,7 +20,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-class ManagePanelProvider extends PanelProvider
+class ControlPlanePanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
@@ -47,12 +47,12 @@ class ManagePanelProvider extends PanelProvider
                 'primary' => Color::hex('#9c3d2e'),
             ])
             ->brandName('SlimCMS · Gestione')
-            ->discoverResources(in: app_path('Filament/Manage/Resources'), for: 'App\Filament\Manage\Resources')
-            ->discoverPages(in: app_path('Filament/Manage/Pages'), for: 'App\Filament\Manage\Pages')
+            ->discoverResources(in: app_path('ControlPlane/Filament/Resources'), for: 'App\ControlPlane\Filament\Resources')
+            ->discoverPages(in: app_path('ControlPlane/Filament/Pages'), for: 'App\ControlPlane\Filament\Pages')
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Manage/Widgets'), for: 'App\Filament\Manage\Widgets')
+            ->discoverWidgets(in: app_path('ControlPlane/Filament/Widgets'), for: 'App\ControlPlane\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,

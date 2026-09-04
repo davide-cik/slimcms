@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Manage\Resources\Plans\Pages;
+namespace App\ControlPlane\Filament\Resources\Plans\Pages;
 
-use App\Filament\Manage\Resources\Plans\PlanResource;
+use App\ControlPlane\Filament\Resources\Plans\PlanResource;
 use Filament\Resources\Pages\EditRecord;
 
 class EditPlan extends EditRecord

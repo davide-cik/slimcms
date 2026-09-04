@@ -51,8 +51,7 @@ class ProvisionaDominio extends Command
         if ($dns['stato'] !== 'ok') {
             $this->line('   <fg=red>' . $dns['stato'] . '</> — ' . $dns['dettaglio']);
             $this->newLine();
-            $this->line('   Il cliente deve creare un record A:');
-            $this->line("     {$dominio}.  A  " . config('slimcms.ip_server'));
+            $this->istruzioniDns($dominio);
             $this->newLine();
 
             if (! $this->option('forza')) {
@@ -118,6 +117,35 @@ class ProvisionaDominio extends Command
         return in_array($r['cert']['stato'], ['valido', 'in_scadenza'], true)
             ? self::SUCCESS
             : self::FAILURE;
+    }
+
+
+    /**
+     * Istruzioni DNS da dare al cliente.
+     *
+     * Distingue apice e sottodominio perche' la differenza non e' un
+     * dettaglio: un CNAME non puo' stare all'apice di una zona (RFC 1034), e
+     * dare l'istruzione sbagliata fa perdere un giro di email col cliente.
+     */
+    private function istruzioniDns(string $dominio): void
+    {
+        $target = config('slimcms.cname_target');
+        $ip = config('slimcms.ip_server');
+        $apice = substr_count($dominio, '.') === 1;
+
+        $this->line('   Il cliente deve configurare il DNS cosi:');
+        $this->newLine();
+
+        if ($apice) {
+            $this->line("     {$dominio}.        A      {$ip}");
+            $this->line("     www.{$dominio}.    CNAME  {$target}.");
+            $this->newLine();
+            $this->line("   Nota: {$dominio} e' un dominio all'apice e non puo' essere un CNAME");
+            $this->line('   (RFC 1034). Se il suo DNS supporta ALIAS/ANAME o CNAME flattening');
+            $this->line("   (Cloudflare lo fa), puo' usare {$target} anche all'apice.");
+        } else {
+            $this->line("     {$dominio}.  CNAME  {$target}.");
+        }
     }
 
     /** La CLI di Hestia e' leggibile solo da root: se non lo siamo, si vede subito. */

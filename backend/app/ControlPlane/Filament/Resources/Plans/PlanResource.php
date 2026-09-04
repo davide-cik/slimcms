@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Manage\Resources\Plans;
+namespace App\ControlPlane\Filament\Resources\Plans;
 
 use App\Models\Plan;
 use BackedEnum;

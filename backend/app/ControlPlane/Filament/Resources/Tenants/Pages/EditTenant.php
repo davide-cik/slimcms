@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Manage\Resources\Tenants\Pages;
+namespace App\ControlPlane\Filament\Resources\Tenants\Pages;
 
-use App\Filament\Manage\Resources\Tenants\TenantResource;
+use App\ControlPlane\Filament\Resources\Tenants\TenantResource;
 use Filament\Resources\Pages\EditRecord;
 
 class EditTenant extends EditRecord

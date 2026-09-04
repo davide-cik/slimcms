@@ -1,0 +1,37 @@
+# /etc/sudoers.d/slimcms-hestia
+#
+# Permette a SlimCMS di creare vhost e richiedere certificati Let's Encrypt
+# per i domini custom dei clienti, senza dare accesso root generale.
+#
+# INSTALLAZIONE (come root):
+#   visudo -c -f questo-file        # verifica la sintassi PRIMA di installare
+#   install -m 0440 -o root -g root questo-file /etc/sudoers.d/slimcms-hestia
+#
+# Non copiare mai a mano in /etc/sudoers.d senza `visudo -c`: un file con
+# errori di sintassi puo' rendere sudo inutilizzabile per tutti, root incluso.
+
+# I due soli comandi necessari. L'utente Hestia e' FISSATO a "claudio": senza
+# questo vincolo si potrebbero creare domini sotto qualsiasi altro utente del
+# pannello, che e' molto piu' di quanto serva.
+Cmnd_Alias SLIMCMS_HESTIA = \
+    /usr/local/hestia/bin/v-add-domain claudio *, \
+    /usr/local/hestia/bin/v-add-letsencrypt-domain claudio *
+
+claudio ALL=(root) NOPASSWD: SLIMCMS_HESTIA
+
+# COSA CONCEDE DAVVERO, da valutare consapevolmente:
+#
+# L'applicazione gira come utente claudio. Questa regola le da' quindi la
+# capacita' di creare domini e richiedere certificati come root, limitata a
+# quei due comandi e all'utente Hestia claudio. Chi comprometta il codice
+# dell'applicazione ottiene la stessa capacita'.
+#
+# Non concede: lettura o scrittura di file arbitrari, esecuzione di altri
+# comandi, gestione di altri utenti del pannello, riavvio di servizi.
+#
+# Mitigazione lato applicazione: slimcms:provisiona-dominio accetta solo
+# domini gia' presenti nella tabella sites, quindi non e' possibile chiedere
+# un certificato per un dominio che non e' stato prima censito nel control
+# plane. Il vincolo pero' e' nel codice, non in sudoers: se questo ti sembra
+# troppo, l'alternativa e' togliere la regola e provisionare a mano con i
+# comandi che il comando stampa.

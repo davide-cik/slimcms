@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Models;
+namespace App\ControlPlane\Models;
 
 use App\Models\Concerns\HasAppMfa;
 use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
 use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
+use App\Models\Tenant;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
