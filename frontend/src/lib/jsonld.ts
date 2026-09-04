@@ -10,7 +10,7 @@ import type { Pagina } from './api';
 export function grafoJsonLd(p: Pagina, dominio: string, editore?: Record<string, unknown>) {
   // Slash finale coerente con la sitemap e con cio' che il server
   // restituisce con 200: la forma senza slash risponde 301.
-  const url = `https://${dominio}${p.slug === 'home' ? '/' : `/${p.slug}/`}`;
+  const url = `https://${dominio}${p.is_home ? '/' : `/${p.slug}/`}`;
   const nodi: Record<string, unknown>[] = [];
 
   const principale: Record<string, unknown> = {

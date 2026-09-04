@@ -1,6 +1,7 @@
 ---
 import type { Pagina, Sito } from '../lib/api';
 import { grafoJsonLd } from '../lib/jsonld';
+import Icona from '../components/Icona.astro';
 
 interface Props {
   pagina: Pagina;
@@ -25,7 +26,7 @@ const editore = {
 };
 
 const grafo = grafoJsonLd(pagina, dominio, editore);
-const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug === 'home' ? '/' : `/${pagina.slug}/`}`;
+const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.is_home ? '/' : `/${pagina.slug}/`}`;
 
 // L'immagine Open Graph e' un file del sito, generato in build da /og/<slug>.png.
 const immagineOg = `https://${dominio}/og/${pagina.slug}.png`;
@@ -105,10 +106,10 @@ const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined
         </div>
         <p class="firma">
           Piattaforma realizzata con
-          <span class="emoji" role="img" aria-label="cuore">❤️</span>
-          <span class="emoji" role="img" aria-label="cervello">🧠</span>
-          <span class="emoji" role="img" aria-label="braccio">💪</span>
-          e <span class="emoji" role="img" aria-label="robot">🤖</span>
+          <Icona nome="cuore" etichetta="cuore" />
+          <Icona nome="cervello" etichetta="cervello" />
+          <Icona nome="braccio" etichetta="braccio" />
+          e <Icona nome="robot" etichetta="robot" />
           in Italia da <strong>Content is King Srl</strong>
         </p>
       </div>
@@ -504,10 +505,16 @@ const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined
 
       .pie-marchio { display: flex; align-items: center; gap: 0.7rem; }
 
-      .firma { max-width: 44ch; }
+      .firma {
+        max-width: 46ch;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .28em;
+      }
       .firma strong { color: var(--inchiostro); font-weight: 500; }
-      /* le emoji restano alla loro dimensione naturale, allineate al testo */
-      .firma .emoji { font-size: 1.02em; line-height: 1; }
+      /* Le icone ereditano il colore del testo: nel footer sono grigie
+         come il resto, non quattro macchie colorate. */
 
       .legale {
         margin-top: 1.6rem !important;

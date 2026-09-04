@@ -27,11 +27,53 @@ class Page extends Model implements HasMedia
         'site_id',
         'title',
         'slug',
+        'is_home',
         'blocks',
         'seo',
         'status',
         'publish_at',
     ];
+
+    /**
+     * Una sola home per sito, sempre.
+     *
+     * Promuovere una pagina a home degrada l'altra: senza questo si
+     * finirebbe con due pagine che si contendono la radice, e quale delle due
+     * vinca dipenderebbe dall'ordine con cui il frontend le legge.
+     */
+    public static function booted(): void
+    {
+        static::saved(function (self $pagina): void {
+            if (! $pagina->is_home) {
+                return;
+            }
+
+            static::withoutSiteScope()
+                ->where('site_id', $pagina->site_id)
+                ->whereKeyNot($pagina->getKey())
+                ->where('is_home', true)
+                ->each(fn (self $altra) => $altra->forceFill(['is_home' => false])->saveQuietly());
+        });
+
+        // La home non si cancella: un sito senza pagina iniziale risponde 404
+        // sulla propria radice, ed e' un guasto che il redattore scopre dal
+        // cliente invece che dal pannello.
+        static::deleting(function (self $pagina): bool {
+            if ($pagina->is_home) {
+                throw new \RuntimeException(
+                    'La pagina iniziale non si puo\' cancellare. Prima assegna il ruolo a un\'altra pagina.'
+                );
+            }
+
+            return true;
+        });
+    }
+
+    /** La pagina iniziale del sito corrente. */
+    public static function home(): ?self
+    {
+        return static::where('is_home', true)->first();
+    }
 
     public function registerMediaCollections(): void
     {
@@ -48,6 +90,7 @@ class Page extends Model implements HasMedia
     protected function casts(): array
     {
         return [
+            'is_home' => 'boolean',
             'blocks' => 'array',
             'seo' => 'array',
             'publish_at' => 'datetime',

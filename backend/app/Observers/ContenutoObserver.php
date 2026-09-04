@@ -65,7 +65,7 @@ class ContenutoObserver
         }
 
         if ($model instanceof Page) {
-            return $model->slug === 'home' ? '/' : '/' . $model->slug;
+            return $model->is_home ? '/' : '/' . $model->slug;
         }
 
         return '/';

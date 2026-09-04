@@ -19,6 +19,8 @@ export interface Pagina {
   id: number;
   title: string;
   slug: string;
+  /** Quale pagina sta sulla radice: lo dice il flag, non lo slug. */
+  is_home: boolean;
   status: string;
   published_at: string | null;
   updated_at: string | null;
@@ -98,7 +100,7 @@ export async function sito(): Promise<Sito> {
 export async function immagineOpenGraph(slug: string): Promise<ArrayBuffer> {
   if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');
 
-  const percorso = slug === 'home' ? '/og.png' : `/og/${slug}.png`;
+  const percorso = `/og/${slug}.png`;
   const risposta = await fetch(`${BASE}/sites/${SITE}${percorso}`, {
     headers: { Authorization: `Bearer ${TOKEN}` },
   });

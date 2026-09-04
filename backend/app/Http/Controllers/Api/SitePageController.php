@@ -54,10 +54,10 @@ class SitePageController extends Controller
                 // server serve 200 solo sulla forma con slash e risponde 301
                 // sull'altra. Una sitemap che elenca URL che redirigono fa
                 // pagare un salto in piu' a ogni passaggio del crawler.
-                'loc' => 'https://' . $site->domain . ($p->slug === 'home' ? '/' : '/' . $p->slug . '/'),
+                'loc' => 'https://' . $site->domain . ($p->is_home ? '/' : '/' . $p->slug . '/'),
                 'lastmod' => $p->updated_at?->toIso8601String(),
                 'changefreq' => $p->seo['sitemap_change_freq'] ?? 'weekly',
-                'priority' => $p->seo['sitemap_priority'] ?? ($p->slug === 'home' ? '1.0' : '0.7'),
+                'priority' => $p->seo['sitemap_priority'] ?? ($p->is_home ? '1.0' : '0.7'),
             ])
             ->values();
 

@@ -44,7 +44,19 @@ class PageForm
                         ->label('Slug')
                         ->required()
                         ->maxLength(255)
-                        ->helperText("L'indirizzo della pagina: slimcms.it/<slug>"),
+                        ->helperText("L'indirizzo della pagina: slimcms.it/<slug>")
+                        ->disabled(fn (?\App\Models\Page $record): bool => (bool) $record?->is_home)
+                        ->dehydrated(fn (?\App\Models\Page $record): bool => ! $record?->is_home),
+
+                    Toggle::make('is_home')
+                        ->label('Pagina iniziale del sito')
+                        ->helperText('E la pagina servita sulla radice del dominio. Ce ne puo essere una sola: assegnandola qui, la precedente smette di esserlo.')
+                        ->disabled(fn (?\App\Models\Page $record): bool => (bool) $record?->is_home)
+                        // Gia' home: l'interruttore resta acceso ma non si
+                        // spegne. Spegnerlo lascerebbe il sito senza pagina
+                        // iniziale, e il modo giusto di cambiarla e'
+                        // promuoverne un'altra.
+                        ->dehydrated(fn (?\App\Models\Page $record): bool => ! $record?->is_home),
 
                     self::blocchi(),
                 ])->columns(1),

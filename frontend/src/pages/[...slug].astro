@@ -14,8 +14,10 @@ export async function getStaticPaths() {
   const [pagine, s] = await Promise.all([elencoPagine(), sito()]);
 
   return pagine.map((pagina: Pagina) => ({
-    // 'home' vive alla radice, le altre al proprio slug.
-    params: { slug: pagina.slug === 'home' ? undefined : pagina.slug },
+    // La pagina iniziale vive alla radice, le altre al proprio slug.
+    // Lo decide il flag is_home, non uno slug convenuto: cosi' rinominare
+    // lo slug non sposta per sbaglio la home.
+    params: { slug: pagina.is_home ? undefined : pagina.slug },
     props: { pagina, sito: s },
   }));
 }
@@ -46,7 +48,7 @@ const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
           <div class="pannello-macchina">
             <div class="pannello-barra">
               <span class="punto" />
-              <span>structured_summary — {dominio}/{pagina.slug === 'home' ? '' : pagina.slug}</span>
+              <span>structured_summary — {dominio}/{pagina.is_home ? '' : pagina.slug}</span>
             </div>
             <pre><code>{pagina.geo.structured_summary}</code></pre>
           </div>

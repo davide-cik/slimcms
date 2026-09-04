@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Pages\Tables;
 
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\TextColumn;
@@ -23,7 +24,10 @@ class PagesTable
                     ->label('Titolo')
                     ->searchable()
                     ->sortable()
-                    ->weight('medium'),
+                    ->weight('medium')
+                    // Si deve capire a colpo d'occhio quale pagina sta sulla
+                    // radice del dominio, senza aprirla.
+                    ->description(fn ($record): ?string => $record->is_home ? 'Pagina iniziale' : null),
 
                 TextColumn::make('slug')
                     ->label('Indirizzo')
@@ -83,10 +87,21 @@ class PagesTable
             ])
             ->recordActions([
                 EditAction::make(),
+                // La home non si cancella: un sito senza pagina iniziale
+                // risponde 404 sulla propria radice.
+                DeleteAction::make()
+                    ->visible(fn ($record): bool => ! $record->is_home),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        // fetchSelectedRecords forza la cancellazione UNA RIGA
+                        // ALLA VOLTA. Serve davvero: con "seleziona tutto"
+                        // Filament farebbe una delete di massa sulla query, che
+                        // NON fa scattare gli eventi del modello — e la
+                        // protezione della pagina iniziale vive li'. Il sito
+                        // resterebbe senza radice senza un solo errore.
+                        ->fetchSelectedRecords(),
                     RestoreBulkAction::make(),
                     // ForceDeleteBulkAction RIMOSSA di proposito.
                     //

@@ -39,7 +39,7 @@ class PublicSiteController extends Controller
             ->get()
             ->map(fn (Page $p) => [
                 'title' => $p->title,
-                'url' => $p->slug === 'home' ? '/' : '/' . $p->slug,
+                'url' => $p->is_home ? '/' : '/' . $p->slug,
                 'summary' => $p->seo['structured_summary'] ?? $p->seo['meta_description'] ?? null,
             ]);
 
