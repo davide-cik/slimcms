@@ -1,0 +1,243 @@
+<?php
+
+namespace App\Filament\Resources\Pages\Schemas;
+
+use Filament\Forms\Components\Builder as BlockBuilder;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
+
+/**
+ * Form di redazione di una pagina.
+ *
+ * Nota: NON c'e' un campo site_id. Il sito arriva dal tenant Filament
+ * attivo, che SetCurrentSiteFromFilamentTenant traduce nel binding
+ * 'currentSite'; BelongsToSite lo assegna da solo alla creazione. Esporre
+ * quel campo significherebbe permettere a un redattore di spostare una
+ * pagina su un altro sito scegliendolo da una tendina.
+ */
+class PageForm
+{
+    public static function configure(Schema $schema): Schema
+    {
+        return $schema->components([
+            Tabs::make()->columnSpanFull()->tabs([
+
+                Tabs\Tab::make('Contenuto')->schema([
+                    TextInput::make('title')
+                        ->label('Titolo')
+                        ->required()
+                        ->maxLength(255)
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Str::slug((string) $state))),
+
+                    TextInput::make('slug')
+                        ->label('Slug')
+                        ->required()
+                        ->maxLength(255)
+                        ->helperText("L'indirizzo della pagina: slimcms.it/<slug>"),
+
+                    self::blocchi(),
+                ])->columns(1),
+
+                Tabs\Tab::make('Pubblicazione')->schema([
+                    Select::make('status')
+                        ->label('Stato')
+                        ->options([
+                            'draft' => 'Bozza',
+                            'published' => 'Pubblicata',
+                            'scheduled' => 'Programmata',
+                        ])
+                        ->default('draft')
+                        ->required()
+                        ->live(),
+
+                    DateTimePicker::make('publish_at')
+                        ->label('Data di pubblicazione')
+                        ->seconds(false)
+                        ->visible(fn (callable $get) => $get('status') === 'scheduled')
+                        ->requiredIf('status', 'scheduled'),
+                ])->columns(2),
+
+                Tabs\Tab::make('SEO')->schema([
+                    TextInput::make('seo.meta_title')
+                        ->label('Titolo per i motori')
+                        ->maxLength(60)
+                        ->live(debounce: 400)
+                        ->helperText(fn (?string $state) => self::contatore($state, 50, 60)),
+
+                    Textarea::make('seo.meta_description')
+                        ->label('Descrizione per i motori')
+                        ->rows(3)
+                        ->maxLength(160)
+                        ->live(debounce: 400)
+                        ->helperText(fn (?string $state) => self::contatore($state, 120, 160)),
+
+                    TextInput::make('seo.canonical_url')
+                        ->label('URL canonico')
+                        ->url()
+                        ->helperText('Lascia vuoto se questa e\' la versione originale della pagina.'),
+
+                    Toggle::make('seo.noindex')
+                        ->label('Escludi dai motori di ricerca (noindex)')
+                        ->helperText('Da usare con cautela: la pagina sparisce dai risultati.'),
+                ])->columns(1),
+
+                // GEO: Generative Engine Optimization. Non sono campi SEO
+                // classici, servono a farsi citare da Perplexity, AI Overview
+                // e ChatGPT Search, che privilegiano sintesi e affermazioni
+                // fattuali isolabili.
+                Tabs\Tab::make('GEO')->schema([
+                    Textarea::make('seo.structured_summary')
+                        ->label('Sintesi per i motori generativi')
+                        ->rows(3)
+                        ->maxLength(400)
+                        ->live(debounce: 400)
+                        ->helperText(fn (?string $state) => 'Due o tre frasi che riassumono la pagina in linguaggio naturale. '.self::contatore($state, 150, 400)),
+
+                    Repeater::make('seo.key_facts')
+                        ->label('Fatti chiave')
+                        ->helperText('Affermazioni verificabili e autoportanti: i motori generativi tendono a citare frasi dichiarative isolabili.')
+                        ->simple(
+                            TextInput::make('fatto')->required()->maxLength(300)
+                        )
+                        ->addActionLabel('Aggiungi un fatto')
+                        ->defaultItems(0)
+                        ->reorderable(),
+                ])->columns(1),
+
+                // AEO: Answer Engine Optimization. Risposte dirette e FAQ
+                // strutturate, da cui si genera il markup Schema.org FAQPage.
+                Tabs\Tab::make('AEO')->schema([
+                    Select::make('seo.schema_type')
+                        ->label('Tipo di contenuto (Schema.org)')
+                        ->options([
+                            'Article' => 'Articolo',
+                            'Organization' => 'Organizzazione',
+                            'LocalBusiness' => 'Attivita locale',
+                            'Product' => 'Prodotto',
+                            'HowTo' => 'Guida passo passo',
+                            'SoftwareApplication' => 'Software',
+                        ])
+                        ->helperText('Determina il markup strutturato generato automaticamente.'),
+
+                    Textarea::make('seo.direct_answer')
+                        ->label('Risposta diretta')
+                        ->rows(3)
+                        ->maxLength(300)
+                        ->helperText('Solo per pagine che rispondono a una domanda precisa ("Cos\'e...", "Come si fa..."). Pensata per essere estratta come featured snippet o risposta vocale.'),
+
+                    Repeater::make('seo.faq_block')
+                        ->label('FAQ')
+                        ->helperText('Genera automaticamente il markup Schema.org FAQPage.')
+                        ->schema([
+                            TextInput::make('domanda')->required()->maxLength(300),
+                            Textarea::make('risposta')->required()->rows(3),
+                        ])
+                        ->addActionLabel('Aggiungi una domanda')
+                        ->defaultItems(0)
+                        ->collapsed()
+                        ->itemLabel(fn (array $state): ?string => $state['domanda'] ?? null),
+                ])->columns(1),
+            ]),
+        ]);
+    }
+
+    /**
+     * Builder a blocchi: il corpo della pagina.
+     */
+    private static function blocchi(): BlockBuilder
+    {
+        return BlockBuilder::make('blocks')
+            ->label('Contenuto della pagina')
+            ->addActionLabel('Aggiungi un blocco')
+            ->collapsible()
+            ->blockNumbers(false)
+            ->blocks([
+                BlockBuilder\Block::make('hero')
+                    ->label('Apertura')
+                    ->icon('heroicon-o-megaphone')
+                    ->schema([
+                        TextInput::make('occhiello')->label('Occhiello')->maxLength(80),
+                        TextInput::make('titolo')->label('Titolo')->required(),
+                        Textarea::make('testo')->label('Testo')->rows(3),
+                    ]),
+
+                BlockBuilder\Block::make('testo_ricco')
+                    ->label('Testo')
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
+                        RichEditor::make('corpo')->label('Corpo')->required(),
+                    ]),
+
+                BlockBuilder\Block::make('galleria')
+                    ->label('Galleria')
+                    ->icon('heroicon-o-photo')
+                    ->schema([
+                        TextInput::make('titolo')->label('Titolo'),
+                        Repeater::make('immagini')
+                            ->label('Immagini')
+                            ->schema([
+                                TextInput::make('percorso')->label('Percorso file')->required(),
+                                TextInput::make('alt')
+                                    ->label('Testo alternativo')
+                                    ->required()
+                                    ->helperText('Descrive l\'immagine a chi non la vede. Obbligatorio.'),
+                            ])
+                            ->defaultItems(1),
+                    ]),
+
+                BlockBuilder\Block::make('cta')
+                    ->label('Invito all\'azione')
+                    ->icon('heroicon-o-cursor-arrow-rays')
+                    ->schema([
+                        TextInput::make('titolo')->label('Titolo')->required(),
+                        TextInput::make('etichetta_bottone')->label('Testo del bottone')->required(),
+                        TextInput::make('url')->label('Destinazione')->required(),
+                    ]),
+
+                BlockBuilder\Block::make('faq')
+                    ->label('Domande frequenti')
+                    ->icon('heroicon-o-question-mark-circle')
+                    ->schema([
+                        Repeater::make('voci')
+                            ->label('Domande')
+                            ->schema([
+                                TextInput::make('domanda')->required(),
+                                Textarea::make('risposta')->required()->rows(3),
+                            ])
+                            ->defaultItems(1),
+                    ]),
+            ]);
+    }
+
+    /**
+     * Contatore caratteri con indicazione dell'intervallo consigliato.
+     */
+    private static function contatore(?string $stato, int $min, int $max): string
+    {
+        $n = mb_strlen((string) $stato);
+
+        if ($n === 0) {
+            return "Vuoto — consigliati fra {$min} e {$max} caratteri.";
+        }
+
+        if ($n < $min) {
+            return "{$n} caratteri — corto, ne servirebbero almeno {$min}.";
+        }
+
+        if ($n > $max) {
+            return "{$n} caratteri — oltre {$max}, verra' troncato nei risultati.";
+        }
+
+        return "{$n} caratteri — buona lunghezza.";
+    }
+}

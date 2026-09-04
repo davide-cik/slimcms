@@ -43,7 +43,9 @@ Eseguire sempre da `backend/` (o `frontend/`), mai dalla radice.
 
 ```bash
 # backend
-php artisan serve                     # dev server
+# ATTENZIONE: `php artisan serve` NON funziona su questa macchina: php.ini
+# disabilita pcntl_* e exec (restrizione dell'hosting). Usa il server built-in:
+php -S 127.0.0.1:8000 -t public public/index.php
 php artisan migrate                   # migrazioni
 php artisan test                      # suite completa (richiede il db claudio_slimcms_test)
 php artisan test --filter=TenantScope # il test di sicurezza multitenant (vedi sotto)
