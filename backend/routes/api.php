@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\SitePageController;
+use App\Http\Controllers\Api\SitePostController;
 use App\Http\Resources\SiteResource;
 use App\Models\Site;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,8 @@ Route::prefix('sites/{site}')
         Route::get('/', fn (Site $site) => new SiteResource($site));
         Route::get('pages', [SitePageController::class, 'index']);
         Route::get('pages/{slug}', [SitePageController::class, 'show']);
+        Route::get('posts', [SitePostController::class, 'index']);
+        Route::get('posts/{slug}', [SitePostController::class, 'show']);
         Route::get('sitemap', [SitePageController::class, 'sitemap']);
     });
 

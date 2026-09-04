@@ -67,88 +67,112 @@ class PageForm
                         ->requiredIf('status', 'scheduled'),
                 ])->columns(2),
 
-                Tabs\Tab::make('SEO')->schema([
-                    TextInput::make('seo.meta_title')
-                        ->label('Titolo per i motori')
-                        ->maxLength(60)
-                        ->live(debounce: 400)
-                        ->helperText(fn (?string $state) => self::contatore($state, 50, 60)),
-
-                    Textarea::make('seo.meta_description')
-                        ->label('Descrizione per i motori')
-                        ->rows(3)
-                        ->maxLength(160)
-                        ->live(debounce: 400)
-                        ->helperText(fn (?string $state) => self::contatore($state, 120, 160)),
-
-                    TextInput::make('seo.canonical_url')
-                        ->label('URL canonico')
-                        ->url()
-                        ->helperText('Lascia vuoto se questa e\' la versione originale della pagina.'),
-
-                    Toggle::make('seo.noindex')
-                        ->label('Escludi dai motori di ricerca (noindex)')
-                        ->helperText('Da usare con cautela: la pagina sparisce dai risultati.'),
-                ])->columns(1),
-
-                // GEO: Generative Engine Optimization. Non sono campi SEO
-                // classici, servono a farsi citare da Perplexity, AI Overview
-                // e ChatGPT Search, che privilegiano sintesi e affermazioni
-                // fattuali isolabili.
-                Tabs\Tab::make('GEO')->schema([
-                    Textarea::make('seo.structured_summary')
-                        ->label('Sintesi per i motori generativi')
-                        ->rows(3)
-                        ->maxLength(400)
-                        ->live(debounce: 400)
-                        ->helperText(fn (?string $state) => 'Due o tre frasi che riassumono la pagina in linguaggio naturale. '.self::contatore($state, 150, 400)),
-
-                    Repeater::make('seo.key_facts')
-                        ->label('Fatti chiave')
-                        ->helperText('Affermazioni verificabili e autoportanti: i motori generativi tendono a citare frasi dichiarative isolabili.')
-                        ->simple(
-                            TextInput::make('fatto')->required()->maxLength(300)
-                        )
-                        ->addActionLabel('Aggiungi un fatto')
-                        ->defaultItems(0)
-                        ->reorderable(),
-                ])->columns(1),
-
-                // AEO: Answer Engine Optimization. Risposte dirette e FAQ
-                // strutturate, da cui si genera il markup Schema.org FAQPage.
-                Tabs\Tab::make('AEO')->schema([
-                    Select::make('seo.schema_type')
-                        ->label('Tipo di contenuto (Schema.org)')
-                        ->options([
-                            'Article' => 'Articolo',
-                            'Organization' => 'Organizzazione',
-                            'LocalBusiness' => 'Attivita locale',
-                            'Product' => 'Prodotto',
-                            'HowTo' => 'Guida passo passo',
-                            'SoftwareApplication' => 'Software',
-                        ])
-                        ->helperText('Determina il markup strutturato generato automaticamente.'),
-
-                    Textarea::make('seo.direct_answer')
-                        ->label('Risposta diretta')
-                        ->rows(3)
-                        ->maxLength(300)
-                        ->helperText('Solo per pagine che rispondono a una domanda precisa ("Cos\'e...", "Come si fa..."). Pensata per essere estratta come featured snippet o risposta vocale.'),
-
-                    Repeater::make('seo.faq_block')
-                        ->label('FAQ')
-                        ->helperText('Genera automaticamente il markup Schema.org FAQPage.')
-                        ->schema([
-                            TextInput::make('domanda')->required()->maxLength(300),
-                            Textarea::make('risposta')->required()->rows(3),
-                        ])
-                        ->addActionLabel('Aggiungi una domanda')
-                        ->defaultItems(0)
-                        ->collapsed()
-                        ->itemLabel(fn (array $state): ?string => $state['domanda'] ?? null),
-                ])->columns(1),
+                ...self::tabSeoGeoAeo(),
             ]),
         ]);
+    }
+
+    /**
+     * I tab SEO / GEO / AEO, condivisi fra Page e Post.
+     *
+     * Stanno qui e non duplicati nei due form perche' un campo aggiunto in un
+     * posto e dimenticato nell'altro e' una divergenza che nessuno nota
+     * finche' non manca un dato in produzione.
+     *
+     * @return array<int, mixed>
+     */
+    public static function tabSeoGeoAeo(): array
+    {
+        return [
+                    Tabs\Tab::make('SEO')->schema([
+                        TextInput::make('seo.meta_title')
+                            ->label('Titolo per i motori')
+                            ->maxLength(60)
+                            ->live(debounce: 400)
+                            ->helperText(fn (?string $state) => self::contatore($state, 50, 60)),
+
+                        Textarea::make('seo.meta_description')
+                            ->label('Descrizione per i motori')
+                            ->rows(3)
+                            ->maxLength(160)
+                            ->live(debounce: 400)
+                            ->helperText(fn (?string $state) => self::contatore($state, 120, 160)),
+
+                        TextInput::make('seo.canonical_url')
+                            ->label('URL canonico')
+                            ->url()
+                            ->helperText('Lascia vuoto se questa e\' la versione originale della pagina.'),
+
+                        Toggle::make('seo.noindex')
+                            ->label('Escludi dai motori di ricerca (noindex)')
+                            ->helperText('Da usare con cautela: la pagina sparisce dai risultati.'),
+                    ])->columns(1),
+
+                    // GEO: Generative Engine Optimization. Non sono campi SEO
+                    // classici, servono a farsi citare da Perplexity, AI Overview
+                    // e ChatGPT Search, che privilegiano sintesi e affermazioni
+                    // fattuali isolabili.
+                    Tabs\Tab::make('GEO')->schema([
+                        Textarea::make('seo.structured_summary')
+                            ->label('Sintesi per i motori generativi')
+                            ->rows(3)
+                            ->maxLength(400)
+                            ->live(debounce: 400)
+                            ->helperText(fn (?string $state) => 'Due o tre frasi che riassumono la pagina in linguaggio naturale. '.self::contatore($state, 150, 400)),
+
+                        Repeater::make('seo.key_facts')
+                            ->label('Fatti chiave')
+                            ->helperText('Affermazioni verificabili e autoportanti: i motori generativi tendono a citare frasi dichiarative isolabili.')
+                            ->simple(
+                                TextInput::make('fatto')->required()->maxLength(300)
+                            )
+                            ->addActionLabel('Aggiungi un fatto')
+                            ->defaultItems(0)
+                            ->reorderable(),
+                    ])->columns(1),
+
+                    // AEO: Answer Engine Optimization. Risposte dirette e FAQ
+                    // strutturate, da cui si genera il markup Schema.org FAQPage.
+                    Tabs\Tab::make('AEO')->schema([
+                        Select::make('seo.schema_type')
+                            ->label('Tipo di contenuto (Schema.org)')
+                            ->options([
+                                'Article' => 'Articolo',
+                                'Organization' => 'Organizzazione',
+                                'LocalBusiness' => 'Attivita locale',
+                                'Product' => 'Prodotto',
+                                'HowTo' => 'Guida passo passo',
+                                'SoftwareApplication' => 'Software',
+                            ])
+                            ->helperText('Determina il markup strutturato generato automaticamente.'),
+
+                        Textarea::make('seo.direct_answer')
+                            ->label('Risposta diretta')
+                            ->rows(3)
+                            ->maxLength(300)
+                            ->helperText('Solo per pagine che rispondono a una domanda precisa ("Cos\'e...", "Come si fa..."). Pensata per essere estratta come featured snippet o risposta vocale.'),
+
+                        Repeater::make('seo.faq_block')
+                            ->label('FAQ')
+                            ->helperText('Genera automaticamente il markup Schema.org FAQPage.')
+                            ->schema([
+                                TextInput::make('domanda')->required()->maxLength(300),
+                                Textarea::make('risposta')->required()->rows(3),
+                            ])
+                            ->addActionLabel('Aggiungi una domanda')
+                            ->defaultItems(0)
+                            ->collapsed()
+                            ->itemLabel(fn (array $state): ?string => $state['domanda'] ?? null),
+                    ])->columns(1),
+        ];
+    }
+
+    /**
+     * Il builder a blocchi, condiviso fra Page e Post.
+     */
+    public static function blocchiPubblici(): BlockBuilder
+    {
+        return self::blocchi();
     }
 
     /**
