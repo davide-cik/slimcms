@@ -12,44 +12,55 @@ namespace Database\Seeders;
  */
 class ContenutoHomeSlimcms
 {
+    /**
+     * Blocchi nel formato del Builder di Filament: tipo e dati separati.
+     * Con la forma piatta il builder non li riconosceva e mostrava la pagina
+     * vuota, e chi avesse salvato da li' avrebbe cancellato il contenuto.
+     */
     public static function blocchi(): array
     {
         return [
             [
-                'tipo' => 'hero',
-                'occhiello' => 'Piattaforma CMS multitenant',
-                'titolo' => 'Un CMS per chi gestisce venti siti, non uno.',
-                'testo' => 'SlimCMS sostituisce WordPress quando i siti da mantenere sono tanti e piccoli. Un pannello solo per tutti. Pagine pubbliche generate staticamente, servite dalla CDN, che non toccano mai il backend.',
+                'type' => 'hero',
+                'data' => [
+                    'occhiello' => 'Piattaforma CMS multitenant',
+                    'titolo' => 'Un CMS per chi gestisce venti siti, non uno.',
+                    'testo' => 'SlimCMS sostituisce WordPress quando i siti da mantenere sono tanti e piccoli. Un pannello solo per tutti. Pagine pubbliche generate staticamente, servite dalla CDN, che non toccano mai il backend.',
+                ],
             ],
             [
-                'tipo' => 'capacita',
-                'voci' => [
-                    [
-                        'etichetta' => 'Amministrazione',
-                        'titolo' => 'Venti siti, un pannello',
-                        'testo' => 'Entri una volta e vedi tutti i siti che gestisci. Nessuna installazione da aggiornare per ognuno, nessun plugin che si rompe su uno e non sull altro.',
-                        'macchina' => '"tenant": { "sites": 20, "panels": 1 }',
-                    ],
-                    [
-                        'etichetta' => 'Pubblicazione',
-                        'titolo' => 'Il visitatore non aspetta il database',
-                        'testo' => 'Quando pubblichi, SlimCMS rigenera solo le pagine cambiate e le manda in CDN. Chi apre il sito riceve un file gia pronto: il backend non viene nemmeno interpellato.',
-                        'macchina' => '"render": "static", "origin_hits_per_view": 0',
-                    ],
-                    [
-                        'etichetta' => 'Visibilita',
-                        'titolo' => 'Scritto per chi legge, leggibile da chi indicizza',
-                        'testo' => 'Oltre ai campi SEO classici, ogni pagina porta una sintesi in linguaggio naturale e un elenco di fatti verificabili: e il formato che i motori generativi citano piu volentieri.',
-                        'macchina' => '"structured_summary": true, "key_facts": 4',
+                'type' => 'capacita',
+                'data' => [
+                    'voci' => [
+                        [
+                            'etichetta' => 'Amministrazione',
+                            'titolo' => 'Venti siti, un pannello',
+                            'testo' => 'Entri una volta e vedi tutti i siti che gestisci. Nessuna installazione da aggiornare per ognuno, nessun plugin che si rompe su uno e non sull altro.',
+                            'macchina' => '"tenant": { "sites": 20, "panels": 1 }',
+                        ],
+                        [
+                            'etichetta' => 'Pubblicazione',
+                            'titolo' => 'Il visitatore non aspetta il database',
+                            'testo' => 'Quando pubblichi, SlimCMS rigenera solo le pagine cambiate e le manda in CDN. Chi apre il sito riceve un file gia pronto: il backend non viene nemmeno interpellato.',
+                            'macchina' => '"render": "static", "origin_hits_per_view": 0',
+                        ],
+                        [
+                            'etichetta' => 'Visibilita',
+                            'titolo' => 'Scritto per chi legge, leggibile da chi indicizza',
+                            'testo' => 'Oltre ai campi SEO classici, ogni pagina porta una sintesi in linguaggio naturale e un elenco di fatti verificabili: e il formato che i motori generativi citano piu volentieri.',
+                            'macchina' => '"structured_summary": true, "key_facts": 4',
+                        ],
                     ],
                 ],
             ],
             [
-                'tipo' => 'cta',
-                'titolo' => 'Stiamo costruendo SlimCMS in pubblico.',
-                'etichetta_bottone' => 'ciao@slimcms.it',
-                'url' => 'mailto:ciao@slimcms.it',
-                'testo' => 'La piattaforma e in sviluppo attivo e slimcms.it e il primo sito che gira sopra di essa. Se gestisci molti siti piccoli e la manutenzione ti sta mangiando le giornate, scrivici: cerchiamo i primi utilizzatori.',
+                'type' => 'cta',
+                'data' => [
+                    'titolo' => 'Stiamo costruendo SlimCMS in pubblico.',
+                    'etichetta_bottone' => 'ciao@slimcms.it',
+                    'url' => 'mailto:ciao@slimcms.it',
+                    'testo' => 'La piattaforma e in sviluppo attivo e slimcms.it e il primo sito che gira sopra di essa. Se gestisci molti siti piccoli e la manutenzione ti sta mangiando le giornate, scrivici: cerchiamo i primi utilizzatori.',
+                ],
             ],
         ];
     }

@@ -99,10 +99,13 @@ class DemoMultiTenantSeeder extends Seeder
             'title' => $titolo,
             'status' => 'published',
             'publish_at' => now(),
+            // Formato del Builder di Filament: tipo e dati separati.
             'blocks' => [[
-                'tipo' => 'hero',
-                'titolo' => $titolo,
-                'testo' => 'Pagina di esempio generata dal seeder demo.',
+                'type' => 'hero',
+                'data' => [
+                    'titolo' => $titolo,
+                    'testo' => 'Pagina di esempio generata dal seeder demo.',
+                ],
             ]],
             'seo' => [
                 'meta_title' => $titolo,

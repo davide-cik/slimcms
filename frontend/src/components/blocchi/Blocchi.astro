@@ -6,11 +6,21 @@ interface Props {
 }
 
 const { blocchi } = Astro.props;
+
+/**
+ * I blocchi arrivano nel formato del Builder di Filament: { type, data }.
+ * Il tipo e i dati stanno su due livelli diversi, non appiattiti: leggerli
+ * qui in un punto solo evita di ripetere `b.data?.x` in ogni ramo.
+ */
+const elenco = blocchi.map((b) => ({
+  tipo: (b as Record<string, unknown>).type as string | undefined,
+  d: ((b as Record<string, unknown>).data ?? {}) as Record<string, unknown>,
+}));
 ---
 
 {
-  blocchi.map((b) => {
-    switch (b.tipo) {
+  elenco.map(({ tipo, d: b }) => {
+    switch (tipo) {
       case 'hero':
         return (
           <section class="apertura">

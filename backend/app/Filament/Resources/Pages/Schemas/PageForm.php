@@ -228,6 +228,29 @@ class PageForm
                         TextInput::make('url')->label('Destinazione')->required(),
                     ]),
 
+                // Elenco di capacita' a tre colonne: etichetta, testo e una
+                // riga tecnica. E' usato dalla home di slimcms.it; senza
+                // questo blocco quel contenuto sarebbe visibile sul sito ma
+                // non modificabile dal pannello.
+                BlockBuilder\Block::make('capacita')
+                    ->label('Elenco di capacita')
+                    ->icon('heroicon-o-list-bullet')
+                    ->schema([
+                        Repeater::make('voci')
+                            ->label('Voci')
+                            ->schema([
+                                TextInput::make('etichetta')->label('Etichetta')->required()->maxLength(40),
+                                TextInput::make('titolo')->label('Titolo')->required(),
+                                Textarea::make('testo')->label('Testo')->rows(3)->required(),
+                                TextInput::make('macchina')
+                                    ->label('Riga tecnica')
+                                    ->helperText('Il frammento in monospazio accanto alla voce. Facoltativo.'),
+                            ])
+                            ->defaultItems(1)
+                            ->collapsed()
+                            ->itemLabel(fn (array $state): ?string => $state['titolo'] ?? null),
+                    ]),
+
                 BlockBuilder\Block::make('faq')
                     ->label('Domande frequenti')
                     ->icon('heroicon-o-question-mark-circle')

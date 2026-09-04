@@ -83,10 +83,12 @@ class SlimcmsPilotSeeder extends Seeder
                 'status' => 'published',
                 'publish_at' => now(),
                 'blocks' => [[
-                    'tipo' => 'hero',
-                    'occhiello' => 'La squadra',
-                    'titolo' => 'Chi siamo',
-                    'testo' => 'SlimCMS e sviluppato da Content is King Srl, a Varedo. Gestiamo mini siti per i nostri clienti da anni: la piattaforma nasce dai problemi che avevamo noi.',
+                    'type' => 'hero',
+                    'data' => [
+                        'occhiello' => 'La squadra',
+                        'titolo' => 'Chi siamo',
+                        'testo' => 'SlimCMS e sviluppato da Content is King Srl, a Varedo. Gestiamo mini siti per i nostri clienti da anni: la piattaforma nasce dai problemi che avevamo noi.',
+                    ],
                 ]],
                 'seo' => [
                     'meta_title' => 'Chi siamo — SlimCMS',
@@ -116,8 +118,8 @@ class SlimcmsPilotSeeder extends Seeder
                 'status' => 'published',
                 'publish_at' => now()->subDay(),
                 'blocks' => [[
-                    'tipo' => 'testo_ricco',
-                    'corpo' => '<p>Il problema non era WordPress in se, ma la moltiplicazione: venti installazioni separate, ognuna con i suoi aggiornamenti, i suoi plugin e i suoi orari in cui qualcosa si rompeva.</p>',
+                    'type' => 'testo_ricco',
+                    'data' => ['corpo' => '<p>Il problema non era WordPress in se, ma la moltiplicazione: venti installazioni separate, ognuna con i suoi aggiornamenti, i suoi plugin e i suoi orari in cui qualcosa si rompeva.</p>'],
                 ]],
                 'seo' => [
                     'meta_title' => 'Perche abbiamo lasciato WordPress — SlimCMS',
