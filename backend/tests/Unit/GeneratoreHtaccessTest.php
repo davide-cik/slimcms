@@ -23,7 +23,12 @@ class GeneratoreHtaccessTest extends TestCase
     public function test_la_pagina_di_errore_del_sito_c_e_sempre(): void
     {
         // Senza questa riga ogni cliente mostra il 404 inglese di HestiaCP.
-        $this->assertStringContainsString('ErrorDocument 404 /404.html', $this->genera([]));
+        // Punta al gestore PHP, che oltre a stampare la pagina annota
+        // l'indirizzo mancante: e' anche il monitoraggio dei 404.
+        $this->assertStringContainsString(
+            'ErrorDocument 404 /' . GeneratoreHtaccess::GESTORE_404,
+            $this->genera([])
+        );
     }
 
     public function test_una_regola_accetta_l_indirizzo_con_e_senza_slash_finale(): void

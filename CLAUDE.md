@@ -273,6 +273,34 @@ così passa sempre, anche togliendo il controllo dal middleware. Usare
 `Sanctum::actingAs($user, ['site:<id>'])`, e verificare che il test fallisca davvero
 rompendo il middleware.
 
+## Monitoraggio dei 404
+
+Un 404 su un sito statico **non lascia traccia in Laravel**: nessuna richiesta lo
+raggiunge. La pagina d'errore è quindi un piccolo file PHP sul dominio del sito
+(`slimcms-404.php`, generato nel `dist/` come tutto il resto, perché `rsync --delete`
+cancellerebbe qualsiasi cosa messa a mano nella document root). Apache lo invoca come
+`ErrorDocument` e gli passa l'indirizzo richiesto; lui **annota una riga** in
+`<dominio>/private/slimcms-404.jsonl` — fuori dalla document root — e stampa `404.html`.
+
+Nessuna rete e nessuna credenziale sul percorso d'errore: la pagina resta veloce e
+funziona anche a backend fermo. `scripts/importa-404.sh` (cron, ogni ora) porta le righe
+nel database con `slimcms:importa-404`.
+
+Il file viene **consumato**: rinominato, letto, cancellato. Così non serve ricordare dove
+si era arrivati — tenere una posizione di lettura è il modo tipico in cui un monitor muore
+dopo una rotazione, restando apparentemente vivo. Il rename avviene *prima* della lettura,
+quindi le richieste che arrivano nel frattempo scrivono nel file nuovo e non si perdono.
+
+**Il discriminante è il referrer.** Un 404 con referrer significa che esiste un
+collegamento rotto, su questo sito o su quello di qualcun altro. Uno senza referrer è
+quasi sempre uno scanner che prova `/wp-admin`. Si registra tutto, ma la vista predefinita
+del pannello mostra solo i primi: un elenco pieno di rumore diventa un allarme che si
+impara a ignorare — lo stesso ragionamento dei TLD esclusi da
+`slimcms:monitora-certificati`.
+
+Dalla riga di un 404 si crea un reindirizzamento con un'azione sola, senza ricopiare
+l'indirizzo.
+
 ## Slug
 
 `App\Support\Slug::da()` è **l'unico punto** in cui si costruisce uno slug. Era

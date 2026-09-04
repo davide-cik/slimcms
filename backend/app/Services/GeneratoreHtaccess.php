@@ -19,6 +19,9 @@ use Illuminate\Support\Collection;
  */
 class GeneratoreHtaccess
 {
+    /** Il gestore della pagina d'errore, generato nel sito dalla build. */
+    public const GESTORE_404 = 'slimcms-404.php';
+
     /**
      * @param  Collection<int, Redirect>  $redirect
      */
@@ -41,7 +44,12 @@ class GeneratoreHtaccess
             '',
             // La pagina d'errore del sito, non quella dell'hosting: senza
             // questa riga ogni cliente mostra il 404 inglese di HestiaCP.
-            'ErrorDocument 404 /404.html',
+            //
+            // Punta al gestore PHP e non direttamente a 404.html perche' quel
+            // gestore, oltre a stampare la pagina, annota l'indirizzo mancante
+            // in una cartella privata. E' l'unico modo di sapere quali
+            // collegamenti sono rotti su un sito che non passa da Laravel.
+            'ErrorDocument 404 /' . self::GESTORE_404,
         ];
 
         if ($regole->isNotEmpty()) {

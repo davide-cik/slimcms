@@ -63,4 +63,25 @@ return [
     | di deploy non trovato" senza che nulla spieghi perche'.
     */
     'script_deploy' => env('SLIMCMS_SCRIPT_DEPLOY', '/home/claudio/dev/slimcms/scripts/deploy-frontend.sh'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Registro dei 404
+    |--------------------------------------------------------------------------
+    |
+    | Dove il gestore d'errore di ogni sito annota gli indirizzi mancanti.
+    | E' un MODELLO di percorso, non un percorso: {dominio} viene sostituito
+    | col dominio del sito. Sta in `private/`, che non e' servita dal web.
+    |
+    | Se un sito vivesse altrove, si cambia il modello: il gestore lo scrive
+    | sempre accanto alla propria document root, quindi il modello e la
+    | struttura delle cartelle devono corrispondere.
+    |
+    */
+
+    'registro_404' => env(
+        'SLIMCMS_REGISTRO_404',
+        '/home/' . env('SLIMCMS_UTENTE_HOSTING', 'claudio') . '/web/{dominio}/private/slimcms-404.jsonl'
+    ),
+
 ];

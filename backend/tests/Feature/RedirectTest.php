@@ -129,7 +129,7 @@ class RedirectTest extends TestCase
 
         $risposta->assertOk();
         $risposta->assertSee('RewriteRule ^vecchia/?$ /nuova/ [R=301,L]', escape: false);
-        $risposta->assertSee('ErrorDocument 404 /404.html', escape: false);
+        $risposta->assertSee('ErrorDocument 404 /slimcms-404.php', escape: false);
     }
 
     public function test_un_token_di_un_altro_sito_non_legge_il_file(): void
