@@ -56,7 +56,9 @@ class TenantScopeTest extends TestCase
     private const EXCLUDED_MODELS = [
         \App\Models\Tenant::class,  // e' il tenant stesso, non un dato al suo interno
         \App\Models\Plan::class,    // catalogo commerciale di piattaforma
-        \App\Models\User::class,    // utenti collegati ai siti via tabella pivot, non via colonna
+        \App\Models\User::class,    // TODO: da rivedere quando esistera' il pivot site_user.
+                                    // Oggi passa solo perche' la tabella users e' ancora
+                                    // quella di default e non ha site_id: esclusione NON progettata.
     ];
 
     public function test_ogni_modello_con_colonna_di_scoping_usa_il_trait_corrispondente(): void
