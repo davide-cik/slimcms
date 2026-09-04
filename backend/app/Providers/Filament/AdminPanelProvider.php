@@ -14,6 +14,7 @@ use App\Http\Middleware\SetCurrentSiteFromFilamentTenant;
 use App\Models\Site;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -75,6 +76,12 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            // Il banner deve stare in cima a OGNI pagina del pannello: chi
+            // impersona non deve poter dimenticare di starlo facendo.
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): string => view('filament.banner-impersonazione')->render(),
+            )
             ->tenantMiddleware([
                 // Allinea il binding 'currentSite' al tenant scelto in Filament,
                 // cosi' i global scope di BelongsToSite filtrano sul sito giusto

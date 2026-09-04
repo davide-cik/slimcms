@@ -3,6 +3,9 @@
 namespace App\ControlPlane\Filament\Resources\Sites;
 
 use App\ControlPlane\Filament\Resources\Sites\RelationManagers\RedattoriRelationManager;
+use App\Models\Impersonazione;
+use App\Models\User;
+use Filament\Actions\Action as AzioneRiga;
 use App\Models\Site;
 use App\Services\StatoDominio;
 use BackedEnum;
@@ -237,6 +240,38 @@ class SiteResource extends Resource
             ])
             ->recordActions([
                 EditAction::make(),
+
+                // Entra nel pannello contenuti impersonando un redattore.
+                // Non e' un accesso diretto del super-admin: vedi
+                // ImpersonazioneController per il perche'.
+                Action::make('entra')
+                    ->label('Apri il pannello contenuti')
+                    ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                    ->color('primary')
+                    ->visible(fn (): bool => (bool) auth('manage')->user()?->isSuperAdmin())
+                    ->schema(fn (Site $record): array => [
+                        Select::make('user_id')
+                            ->label('Entra come')
+                            ->options(fn (): array => $record->users()->pluck('name', 'users.id')->all())
+                            ->required()
+                            ->helperText('Entrerai come questo redattore. L\'accesso resta registrato.'),
+                    ])
+                    ->modalHeading('Aprire il pannello contenuti di questo sito?')
+                    ->modalDescription('Le modifiche che farai risulteranno fatte dal redattore scelto, ma resta traccia che dietro c\'eri tu.')
+                    ->modalSubmitActionLabel('Entra')
+                    ->disabled(fn (Site $record): bool => $record->users()->doesntExist())
+                    ->action(function (Site $record, array $data) {
+                        $utente = User::withoutSitePivotScope()->findOrFail($data['user_id']);
+
+                        $imp = Impersonazione::apri(
+                            auth('manage')->user(),
+                            $utente,
+                            $record,
+                            request()->ip(),
+                        );
+
+                        return redirect()->route('impersona.entra', $imp->token);
+                    }),
 
                 Action::make('verifica')
                     ->label('Verifica dominio')

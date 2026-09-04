@@ -56,6 +56,9 @@ class TenantScopeTest extends TestCase
     private const EXCLUDED_MODELS = [
         \App\Models\Tenant::class,  // e' il tenant stesso, non un dato al suo interno
         \App\Models\Plan::class,    // catalogo commerciale di piattaforma
+        \App\Models\Impersonazione::class, // registro di piattaforma: va letto dal
+                                    // control plane, dove non c'e' un sito corrente,
+                                    // e deve mostrare gli accessi a tutti i siti
         \App\Models\BuildRequest::class, // lavoro di piattaforma, non contenuto:
                                     // i comandi in console devono vedere le build
                                     // di tutti i siti per eseguirle in ordine

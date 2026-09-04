@@ -34,6 +34,7 @@ class Site extends Model implements HasMedia
         'logo_path',
         'favicon_path',
         'favicon_initials',
+        'og_config',
         'theme',
         'seo_defaults',
         'ssl_status',
@@ -48,6 +49,7 @@ class Site extends Model implements HasMedia
         return [
             'theme' => 'array',
             'seo_defaults' => 'array',
+            'og_config' => 'array',
             // Senza questi cast le colonne arrivano come stringhe e ogni
             // ->format() in tabella o nei form esplode con "Call to a member
             // function format() on string". Le colonne sono state aggiunte da
