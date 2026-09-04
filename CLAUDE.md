@@ -17,7 +17,7 @@ costruire, leggi la specifica; qui trovi il *come* e i vincoli non negoziabili.
 | Multitenancy | `stancl/tenancy` ^3.10 | modello **single database** con scoping per colonna |
 | Database | MariaDB 10.6.23 **remota su `10.0.0.3`** | db `claudio_slimcms`, utente `claudio_slimcms`. NON è il MariaDB locale |
 | Queue / cache | Redis 6.0 (locale, attivo) | driver `database` accettabile solo in test |
-| Frontend | Astro, output `hybrid` | Node 24.13 |
+| Frontend | Astro 7.3.1, output `static` | Node 24.13. `hybrid` (citato nelle specifiche) e' stato RIMOSSO in Astro 7: `static` e' il default e fa la stessa cosa |
 | Auth API | Laravel Sanctum ^4 | token per il worker di build Astro |
 
 Docker **non** è disponibile su questa macchina: tutto gira su servizi di sistema.
