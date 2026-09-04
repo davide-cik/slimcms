@@ -105,7 +105,7 @@ class RunBuildQueue extends Command
 
         $this->info("build {$richiesta->id}: {$site->domain} ({$richiesta->scope}, {$richiesta->reason})");
 
-        $script = base_path('../scripts/deploy-frontend.sh');
+        $script = config('slimcms.script_deploy');
 
         if (! is_executable($script)) {
             $richiesta->update([

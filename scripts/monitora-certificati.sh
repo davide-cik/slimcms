@@ -13,7 +13,18 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$REPO_ROOT/backend"
+# Quale installazione usare: la produzione se c'e', altrimenti quella di
+# sviluppo. I contenuti veri vivono in produzione, e un cron che leggesse il
+# database di sviluppo eseguirebbe le build sbagliate — o, peggio, nessuna,
+# lasciando il sito fermo senza che nessun errore lo segnali.
+APP_PROD="/home/claudio/web/manage.slimcms.it/private/slimcms-app"
+if [[ -d "$APP_PROD" ]]; then
+  APP="$APP_PROD"
+else
+  APP="$REPO_ROOT/backend"
+fi
+
+cd "$APP"
 
 # Il comando esce con codice diverso da zero se trova problemi: lo lasciamo
 # propagare, cosi' il cron lo segnala anche a chi non legge il log.

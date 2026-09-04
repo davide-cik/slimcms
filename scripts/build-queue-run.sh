@@ -24,5 +24,16 @@ if ! flock -n 9; then
   exit 0
 fi
 
-cd "$REPO_ROOT/backend"
+# Quale installazione usare: la produzione se c'e', altrimenti quella di
+# sviluppo. I contenuti veri vivono in produzione, e un cron che leggesse il
+# database di sviluppo eseguirebbe le build sbagliate — o, peggio, nessuna,
+# lasciando il sito fermo senza che nessun errore lo segnali.
+APP_PROD="/home/claudio/web/manage.slimcms.it/private/slimcms-app"
+if [[ -d "$APP_PROD" ]]; then
+  APP="$APP_PROD"
+else
+  APP="$REPO_ROOT/backend"
+fi
+
+cd "$APP"
 exec php artisan slimcms:build-queue --max=3

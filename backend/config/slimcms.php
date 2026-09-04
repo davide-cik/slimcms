@@ -53,4 +53,14 @@ return [
     | Destinatario degli alert su certificati e build.
     */
     'email_alert' => env('SLIMCMS_EMAIL_ALERT', 'davide@giansoldati.it'),
+
+    /*
+    | Script che ricostruisce e pubblica il frontend.
+    |
+    | Non e' un percorso relativo all'applicazione: in produzione l'app vive
+    | dentro <dominio>/private/ mentre gli script stanno nel repository, che e'
+    | altrove. Con un percorso relativo la coda di build fallisce con "script
+    | di deploy non trovato" senza che nulla spieghi perche'.
+    */
+    'script_deploy' => env('SLIMCMS_SCRIPT_DEPLOY', '/home/claudio/dev/slimcms/scripts/deploy-frontend.sh'),
 ];

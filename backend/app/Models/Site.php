@@ -35,6 +35,11 @@ class Site extends Model implements HasMedia
         'favicon_path',
         'theme',
         'seo_defaults',
+        'ssl_status',
+        'ssl_expires_at',
+        'ssl_checked_at',
+        'ssl_last_error',
+        'dns_status',
     ];
 
     protected function casts(): array
@@ -42,6 +47,13 @@ class Site extends Model implements HasMedia
         return [
             'theme' => 'array',
             'seo_defaults' => 'array',
+            // Senza questi cast le colonne arrivano come stringhe e ogni
+            // ->format() in tabella o nei form esplode con "Call to a member
+            // function format() on string". Le colonne sono state aggiunte da
+            // una migrazione successiva alla creazione del modello: e' il
+            // punto in cui e' facile dimenticarsene.
+            'ssl_expires_at' => 'datetime',
+            'ssl_checked_at' => 'datetime',
         ];
     }
 
