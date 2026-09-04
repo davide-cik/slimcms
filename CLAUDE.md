@@ -409,6 +409,24 @@ non sulla sola presenza della chiave di sessione: così poggia su un fatto regis
 verificabile a posteriori. Segreto TOTP e codici di recupero sono **cifrati a riposo**
 (`'encrypted'` cast): chi legge il database non deve poter rigenerare i codici di nessuno.
 
+## Il contratto fra pannello e sito pubblico
+
+`backend/tests/Feature/ContrattoBlocchiTest.php` legge l'elenco dei blocchi dal form
+Filament — che ne è la fonte — e pretende che ognuno sia reso da
+`frontend/src/components/blocchi/Blocchi.astro`, e viceversa. Poi fa fare a ogni tipo
+il giro intero: salvataggio dal pannello, rilettura nel pannello, uscita dall'API con
+le immagini risolte.
+
+Attraversa i due linguaggi di proposito. **Quasi tutti i guasti di questo progetto sono
+nati sulla stessa giuntura**: due metà scritte in momenti diversi, ciascuna verificata
+contro *l'idea* dell'altra invece che contro l'altra — i blocchi salvati piatti mentre
+il form li voleva annidati, `capacita` usato dal contenuto e assente dal form, la
+galleria che non teneva alcun riferimento alle immagini. Due metà sbagliate nello
+stesso modo passano tutti i test scritti per lato.
+
+Un tipo di blocco nuovo va aggiunto a `datiDiProva()`: senza, il test fallisce con un
+messaggio esplicito invece di saltarlo in silenzio.
+
 ## Convenzioni di codice
 
 - Segui le convenzioni Laravel standard; non introdurre astrazioni non richieste.
