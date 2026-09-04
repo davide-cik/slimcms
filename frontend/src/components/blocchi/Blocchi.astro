@@ -1,0 +1,116 @@
+---
+import type { Blocco } from '../../lib/api';
+
+interface Props {
+  blocchi: Blocco[];
+}
+
+const { blocchi } = Astro.props;
+---
+
+{
+  blocchi.map((b) => {
+    switch (b.tipo) {
+      case 'hero':
+        return (
+          <section class="apertura">
+            {b.occhiello && <p class="occhiello">{b.occhiello}</p>}
+            <h1 set:html={String(b.titolo ?? '')} />
+            {b.testo && <p class="sommario">{b.testo}</p>}
+          </section>
+        );
+
+      case 'testo_ricco':
+        return (
+          <section class="chiusura">
+            <div class="corpo-ricco" set:html={String(b.corpo ?? '')} />
+          </section>
+        );
+
+      case 'cta':
+        return (
+          <section class="chiusura">
+            <h2>{b.titolo}</h2>
+            {b.testo && <p>{b.testo}</p>}
+            <a class="bottone primario" href={String(b.url ?? '#')}>
+              {b.etichetta_bottone}
+            </a>
+          </section>
+        );
+
+      case 'galleria':
+        return (
+          <section class="capacita">
+            {b.titolo && <h2>{b.titolo}</h2>}
+            <div class="galleria">
+              {(b.immagini as { percorso: string; alt: string }[] | undefined)?.map((i) => (
+                <img src={i.percorso} alt={i.alt} loading="lazy" />
+              ))}
+            </div>
+          </section>
+        );
+
+      case 'capacita':
+        return (
+          <section class="capacita" id="capacita">
+            {(b.voci as { etichetta: string; titolo: string; testo: string; macchina?: string }[] | undefined)?.map(
+              (c) => (
+                <article class="capacita-riga">
+                  <span class="etichetta">{c.etichetta}</span>
+                  <div class="capacita-corpo">
+                    <h2>{c.titolo}</h2>
+                    <p>{c.testo}</p>
+                  </div>
+                  {c.macchina && <code class="capacita-macchina">{c.macchina}</code>}
+                </article>
+              )
+            )}
+          </section>
+        );
+
+      case 'faq':
+        return (
+          <section class="capacita">
+            {(b.voci as { domanda: string; risposta: string }[] | undefined)?.map((v) => (
+              <details class="faq-voce">
+                <summary>{v.domanda}</summary>
+                <p>{v.risposta}</p>
+              </details>
+            ))}
+          </section>
+        );
+
+      default:
+        // Un blocco sconosciuto non deve rompere la build ne' comparire a
+        // meta': lo saltiamo in silenzio lato pubblico, il redattore lo vede
+        // comunque nel pannello.
+        return null;
+    }
+  })
+}
+
+<style>
+  .galleria {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .galleria img { width: 100%; height: auto; border-radius: 3px; }
+
+  .faq-voce {
+    border-bottom: 1px solid var(--riga);
+    padding: 1.1rem 0;
+  }
+  .faq-voce summary {
+    cursor: pointer;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 1.08rem;
+  }
+  .faq-voce p { margin: 0.8rem 0 0; color: var(--inchiostro-tenue); max-width: 62ch; }
+
+  .corpo-ricco :global(p) { max-width: 62ch; color: var(--inchiostro-tenue); }
+  .corpo-ricco :global(h2),
+  .corpo-ricco :global(h3) { font-family: var(--display); letter-spacing: -0.02em; }
+</style>

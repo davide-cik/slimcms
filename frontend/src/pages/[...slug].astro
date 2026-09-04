@@ -1,0 +1,64 @@
+---
+import Base from '../layouts/Base.astro';
+import Blocchi from '../components/blocchi/Blocchi.astro';
+import { elencoPagine, type Pagina } from '../lib/api';
+
+/**
+ * Genera staticamente TUTTE le pagine pubblicate del sito, leggendole
+ * dall'API Laravel in fase di build. Il visitatore riceve HTML gia' pronto
+ * e non tocca mai il backend (specifiche, sezione 7).
+ */
+export async function getStaticPaths() {
+  const pagine = await elencoPagine();
+
+  return pagine.map((pagina: Pagina) => ({
+    // 'home' vive alla radice, le altre al proprio slug.
+    params: { slug: pagina.slug === 'home' ? undefined : pagina.slug },
+    props: { pagina },
+  }));
+}
+
+const { pagina } = Astro.props;
+const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
+---
+
+<Base pagina={pagina} dominio={dominio}>
+  <Blocchi blocchi={pagina.blocks} />
+
+  {/* Il doppio registro: la firma della pagina. Quello che legge una
+      persona sopra, quello che legge un crawler qui sotto — generato dagli
+      stessi campi, non scritto a mano. */}
+  {
+    (pagina.geo.structured_summary || pagina.geo.key_facts.length > 0) && (
+      <section class="doppio" id="macchina">
+        <div class="doppio-testa">
+          <span class="etichetta">Questa pagina, due volte</span>
+          <p>
+            Ogni pagina fatta con SlimCMS esiste in due versioni contemporaneamente. Quella
+            che stai leggendo, e quella qui sotto: la sola che vedono Google, Perplexity e
+            ChatGPT. La seconda non è un ripensamento, si scrive insieme alla prima.
+          </p>
+        </div>
+
+        {pagina.geo.structured_summary && (
+          <div class="pannello-macchina">
+            <div class="pannello-barra">
+              <span class="punto" />
+              <span>structured_summary — {dominio}/{pagina.slug === 'home' ? '' : pagina.slug}</span>
+            </div>
+            <pre><code>{pagina.geo.structured_summary}</code></pre>
+          </div>
+        )}
+
+        {pagina.geo.key_facts.length > 0 && (
+          <div class="fatti">
+            <span class="etichetta">key_facts[]</span>
+            <ul>
+              {pagina.geo.key_facts.map((f: string) => <li>{f}</li>)}
+            </ul>
+          </div>
+        )}
+      </section>
+    )
+  }
+</Base>

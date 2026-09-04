@@ -177,6 +177,27 @@ Da rimuovere quando stancl sistemerà la cosa a monte.
   e per le poche funzioni dinamiche: ricerca interna, form contatto.
 - **Astro non fa fetch a runtime** per il contenuto: lo riceve in fase di build.
 
+## Contratto API fra Laravel e Astro
+
+Due famiglie di endpoint con modelli di autorizzazione **diversi**. Non confonderli.
+
+| Famiglia | Chi chiama | Autorizzazione | Come si risolve il sito |
+|---|---|---|---|
+| `/api/sites/{site}/...` | worker di build Astro | token Sanctum con ability `site:<id>` (`site.token`) | dalla URL, `Site::getRouteKeyName()` = `domain` |
+| `/api/public/...` | browser del visitatore | nessuna, rate limited | dall'`Host` (`site.domain`) |
+
+Il token è legato a **un** sito. `sites:*` esiste per il worker di piattaforma ed è una
+credenziale critica: chi lo possiede legge i contenuti di ogni cliente. Si emette con
+`php artisan slimcms:build-token <email> --site=<dominio>`.
+
+I controller **non** filtrano per `site_id` a mano: lo fa il global scope, dato che il
+middleware ha già fissato il sito corrente. Un `where` esplicito sarebbe ridondante e
+darebbe la falsa impressione che senza di esso la query sia aperta.
+
+Il frontend Astro chiama l'API **solo in fase di build** (`src/lib/api.ts`). Se vedi quel
+modulo importato da un componente con `client:*`, è un errore: il visitatore riceve HTML
+statico e non deve mai toccare il backend.
+
 ## Convenzioni di codice
 
 - Segui le convenzioni Laravel standard; non introdurre astrazioni non richieste.

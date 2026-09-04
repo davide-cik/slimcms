@@ -1,66 +1,30 @@
 ---
-// Landing di slimcms.it.
-// Nota: oggi il contenuto e' inline. Diventera' il primo sito pilota servito
-// dalla piattaforma stessa (dogfooding): stessa struttura di blocchi e campi
-// SEO/GEO/AEO che ricevera' dall'API Laravel.
+import type { Pagina } from '../lib/api';
+import { grafoJsonLd } from '../lib/jsonld';
 
-const structuredSummary =
-  "SlimCMS e' una piattaforma CMS multitenant che sostituisce WordPress nella gestione di molti mini siti aziendali. Un solo pannello amministra tutti i siti; le pagine pubbliche sono generate staticamente e servite da CDN, senza chiamare il backend.";
+interface Props {
+  pagina: Pagina;
+  dominio: string;
+}
 
-const keyFacts = [
-  "Un solo pannello di amministrazione per tutti i siti gestiti.",
-  "Le pagine pubbliche sono statiche: nessuna query al database quando un visitatore apre il sito.",
-  "Ogni pagina genera automaticamente JSON-LD, sitemap.xml e robots.txt.",
-  "L'isolamento fra i dati di clienti diversi e' applicato dal database in su, non dal frontend.",
-];
+const { pagina, dominio } = Astro.props;
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "SlimCMS",
-  applicationCategory: "Content Management System",
-  operatingSystem: "Web",
-  description: structuredSummary,
-  url: "https://slimcms.it",
-  offers: { "@type": "Offer", priceCurrency: "EUR", price: "0" },
-  publisher: {
-    "@type": "Organization",
-    name: "Content is King Srl",
-    vatID: "IT11732600967",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "via Carducci 8",
-      postalCode: "20814",
-      addressLocality: "Varedo",
-      addressRegion: "MB",
-      addressCountry: "IT",
-    },
+const editore = {
+  '@type': 'Organization',
+  name: 'Content is King Srl',
+  vatID: 'IT11732600967',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: 'via Carducci 8',
+    postalCode: '20814',
+    addressLocality: 'Varedo',
+    addressRegion: 'MB',
+    addressCountry: 'IT',
   },
 };
 
-const capacita = [
-  {
-    etichetta: "Amministrazione",
-    titolo: "Venti siti, un pannello",
-    testo:
-      "Entri una volta e vedi tutti i siti che gestisci. Nessuna installazione da aggiornare per ognuno, nessun plugin che si rompe su uno e non sull'altro.",
-    macchina: '"tenant": { "sites": 20, "panels": 1 }',
-  },
-  {
-    etichetta: "Pubblicazione",
-    titolo: "Il visitatore non aspetta il database",
-    testo:
-      "Quando pubblichi, SlimCMS rigenera solo le pagine cambiate e le manda in CDN. Chi apre il sito riceve un file gia' pronto: il backend non viene nemmeno interpellato.",
-    macchina: '"render": "static", "origin_hits_per_view": 0',
-  },
-  {
-    etichetta: "Visibilita'",
-    titolo: "Scritto per chi legge, leggibile da chi indicizza",
-    testo:
-      "Oltre ai campi SEO classici, ogni pagina porta una sintesi in linguaggio naturale e un elenco di fatti verificabili: e' il formato che i motori generativi citano piu' volentieri.",
-    macchina: '"structured_summary": true, "key_facts": 4',
-  },
-];
+const grafo = grafoJsonLd(pagina, dominio, editore);
+const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug === 'home' ? '/' : `/${pagina.slug}`}`;
 ---
 
 <html lang="it">
@@ -68,14 +32,15 @@ const capacita = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>SlimCMS — un CMS per chi gestisce venti siti, non uno</title>
-    <meta name="description" content={structuredSummary} />
-    <link rel="canonical" href="https://slimcms.it/" />
+    <title>{pagina.seo.meta_title}</title>
+    {pagina.seo.meta_description && <meta name="description" content={pagina.seo.meta_description} />}
+    <link rel="canonical" href={canonico} />
+    {pagina.seo.noindex && <meta name="robots" content="noindex, nofollow" />}
 
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="SlimCMS — un CMS per chi gestisce venti siti, non uno" />
-    <meta property="og:description" content={structuredSummary} />
-    <meta property="og:url" content="https://slimcms.it/" />
+    <meta property="og:title" content={pagina.seo.og_title ?? pagina.seo.meta_title} />
+    {pagina.seo.og_description && <meta property="og:description" content={pagina.seo.og_description} />}
+    <meta property="og:url" content={canonico} />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -84,7 +49,7 @@ const capacita = [
       rel="stylesheet"
     />
 
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    {grafo.map((n) => <script type="application/ld+json" set:html={JSON.stringify(n)} />)}
   </head>
 
   <body>
@@ -103,75 +68,7 @@ const capacita = [
     </header>
 
     <main id="contenuto">
-      <section class="apertura">
-        <p class="occhiello">Piattaforma CMS multitenant</p>
-        <h1>
-          Un CMS per chi gestisce<br />
-          <em>venti siti</em>, non uno.
-        </h1>
-        <p class="sommario">
-          SlimCMS sostituisce WordPress quando i siti da mantenere sono tanti e piccoli.
-          Un pannello solo per tutti. Pagine pubbliche generate staticamente, servite dalla
-          CDN, che non toccano mai il backend.
-        </p>
-        <div class="azioni">
-          <a class="bottone primario" href="mailto:ciao@slimcms.it">Richiedi una demo</a>
-          <a class="bottone" href="#capacita">Guarda cosa fa</a>
-        </div>
-      </section>
-
-      <!-- Firma della pagina: lo stesso contenuto, nei due registri in cui esiste.
-           A sinistra quello che legge una persona, a destra quello che legge un crawler. -->
-      <section class="doppio" id="macchina">
-        <div class="doppio-testa">
-          <span class="etichetta">Questa pagina, due volte</span>
-          <p>
-            Ogni pagina fatta con SlimCMS esiste in due versioni contemporaneamente. Quella
-            che stai leggendo, e quella qui sotto: la sola che vedono Google, Perplexity e
-            ChatGPT. La seconda non e' un ripensamento, si scrive insieme alla prima.
-          </p>
-        </div>
-
-        <div class="pannello-macchina">
-          <div class="pannello-barra">
-            <span class="punto"></span>
-            <span>schema.org/SoftwareApplication — slimcms.it/</span>
-          </div>
-          <pre><code>{JSON.stringify(jsonLd, null, 2)}</code></pre>
-        </div>
-
-        <div class="fatti">
-          <span class="etichetta">key_facts[]</span>
-          <ul>
-            {keyFacts.map((fatto) => <li>{fatto}</li>)}
-          </ul>
-        </div>
-      </section>
-
-      <section class="capacita" id="capacita">
-        {
-          capacita.map((c) => (
-            <article class="capacita-riga">
-              <span class="etichetta">{c.etichetta}</span>
-              <div class="capacita-corpo">
-                <h2>{c.titolo}</h2>
-                <p>{c.testo}</p>
-              </div>
-              <code class="capacita-macchina">{c.macchina}</code>
-            </article>
-          ))
-        }
-      </section>
-
-      <section class="chiusura">
-        <h2>Stiamo costruendo SlimCMS in pubblico.</h2>
-        <p>
-          La piattaforma e' in sviluppo attivo e slimcms.it e' il primo sito che gira sopra
-          di essa. Se gestisci molti siti piccoli e la manutenzione ti sta mangiando le
-          giornate, scrivici: cerchiamo i primi utilizzatori.
-        </p>
-        <a class="bottone primario" href="mailto:ciao@slimcms.it">ciao@slimcms.it</a>
-      </section>
+      <slot />
     </main>
 
     <footer>
