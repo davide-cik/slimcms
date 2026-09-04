@@ -27,6 +27,9 @@ class PagesTable
 
                 TextColumn::make('slug')
                     ->label('Indirizzo')
+                    // Su telefono restano titolo e stato: sono le due cose per
+                    // cui un redattore apre l'elenco.
+                    ->visibleFrom('md')
                     ->searchable()
                     ->color('gray')
                     ->prefix('/'),
@@ -49,12 +52,14 @@ class PagesTable
                 // sono stati compilati, senza dover aprire la pagina.
                 TextColumn::make('seo')
                     ->label('SEO / GEO / AEO')
+                    ->visibleFrom('lg')
                     ->state(fn ($record): string => self::riepilogoSeo($record))
                     ->badge()
                     ->color(fn ($record): string => self::punteggioSeo($record) === 3 ? 'success' : 'warning'),
 
                 TextColumn::make('publish_at')
                     ->label('Pubblicazione')
+                    ->visibleFrom('md')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),

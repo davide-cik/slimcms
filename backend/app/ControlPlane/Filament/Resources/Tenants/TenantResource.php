@@ -102,7 +102,8 @@ class TenantResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label('Cliente')->searchable()->sortable()->weight('medium'),
-                TextColumn::make('plan.name')->label('Piano')->badge()->placeholder('—'),
+                TextColumn::make('plan.name')->label('Piano')->badge()->placeholder('—')
+                    ->visibleFrom('md'),
 
                 TextColumn::make('sites_count')
                     ->label('Siti')
@@ -131,7 +132,8 @@ class TenantResource extends Resource
                         default => 'warning',
                     }),
 
-                TextColumn::make('created_at')->label('Cliente dal')->date('d/m/Y')->sortable(),
+                TextColumn::make('created_at')->label('Cliente dal')->date('d/m/Y')->sortable()
+                    ->visibleFrom('lg'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([

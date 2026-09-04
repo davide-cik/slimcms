@@ -19,10 +19,11 @@ class PostsTable
             ->columns([
                 TextColumn::make('title')->label('Titolo')->searchable()->sortable()->weight('medium'),
 
-                TextColumn::make('author.name')->label('Autore')->placeholder('—')->color('gray'),
+                TextColumn::make('author.name')->label('Autore')->visibleFrom('lg')->placeholder('—')->color('gray'),
 
                 TextColumn::make('categories.name')
                     ->label('Categorie')
+                    ->visibleFrom('lg')
                     ->badge()
                     ->separator(',')
                     ->placeholder('—'),
@@ -43,6 +44,7 @@ class PostsTable
 
                 TextColumn::make('publish_at')
                     ->label('Pubblicazione')
+                    ->visibleFrom('md')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable()

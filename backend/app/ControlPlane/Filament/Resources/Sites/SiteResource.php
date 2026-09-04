@@ -205,15 +205,18 @@ class SiteResource extends Resource
                             $base = route('anteprima.og', $record) . '?v=' . now()->timestamp;
 
                             return new HtmlString(<<<HTML
-                                <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start">
-                                  <figure style="margin:0">
-                                    <img src="{$base}" alt="" style="max-width:220px;border-radius:6px;border:1px solid #d4d4d8">
+                                <div style="display:grid;gap:1.5rem;align-items:start;
+                                            grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))">
+                                  <figure style="margin:0;min-width:0">
+                                    <img src="{$base}" alt="" loading="lazy"
+                                         style="width:100%;max-width:220px;height:auto;border-radius:6px;border:1px solid #d4d4d8">
                                     <figcaption style="font-size:.75rem;opacity:.7;margin-top:.4rem">
                                       Instagram &middot; immagine intera
                                     </figcaption>
                                   </figure>
-                                  <figure style="margin:0">
-                                    <img src="{$base}&ritaglio=1" alt="" style="max-width:360px;border-radius:6px;border:1px solid #d4d4d8">
+                                  <figure style="margin:0;min-width:0">
+                                    <img src="{$base}&ritaglio=1" alt="" loading="lazy"
+                                         style="width:100%;max-width:360px;height:auto;border-radius:6px;border:1px solid #d4d4d8">
                                     <figcaption style="font-size:.75rem;opacity:.7;margin-top:.4rem">
                                       Facebook, LinkedIn, WhatsApp &middot; ritagliata al centro
                                     </figcaption>
@@ -261,11 +264,16 @@ class SiteResource extends Resource
                     ->url(fn (Site $record): string => 'https://' . $record->domain)
                     ->openUrlInNewTab(),
 
-                TextColumn::make('name')->label('Nome')->searchable()->color('gray'),
+                TextColumn::make('name')->label('Nome')->searchable()->color('gray')
+                    // Su telefono restano dominio e certificato: il resto e'
+                    // contesto, e sei colonne su 375px sono illeggibili.
+                    ->visibleFrom('md'),
 
-                TextColumn::make('tenant.name')->label('Cliente')->badge()->sortable(),
+                TextColumn::make('tenant.name')->label('Cliente')->badge()->sortable()
+                    ->visibleFrom('lg'),
 
                 TextColumn::make('users_count')->label('Redattori')->counts('users')->badge()
+                    ->visibleFrom('md')
                     ->color(fn (int $state): string => $state === 0 ? 'warning' : 'gray')
                     // Un sito senza redattori non e' amministrabile da nessuno:
                     // e' uno stato valido subito dopo la creazione, ma se resta

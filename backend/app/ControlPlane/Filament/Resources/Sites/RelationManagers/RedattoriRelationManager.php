@@ -56,6 +56,7 @@ class RedattoriRelationManager extends RelationManager
                     ->state(fn (User $record): string => $record->pivot->role ?? 'editor')
                     ->color(fn (string $state): string => $state === 'admin' ? 'success' : 'gray'),
                 TextColumn::make('altri_siti')
+                    ->visibleFrom('lg')
                     ->label('Altri siti')
                     ->state(fn (User $record): int => $record->sites()->withoutTenancy()
                         ->whereKeyNot($this->getOwnerRecord())->count())

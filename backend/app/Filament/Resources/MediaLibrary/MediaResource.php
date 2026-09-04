@@ -87,6 +87,7 @@ class MediaResource extends Resource
                     ->color(fn (string $state): string => $state === 'presente' ? 'success' : 'warning'),
 
                 TextColumn::make('mime_type')->label('Tipo')->badge()->color('gray')
+                    ->visibleFrom('md')
                     ->formatStateUsing(fn (string $state): string => str_contains($state, '/')
                         ? explode('/', $state)[1]
                         : $state),
@@ -98,7 +99,8 @@ class MediaResource extends Resource
                         : round($state / 1024) . ' KB')
                     ->sortable(),
 
-                TextColumn::make('created_at')->label('Caricato')->since()->sortable(),
+                TextColumn::make('created_at')->label('Caricato')->since()->sortable()
+                    ->visibleFrom('lg'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
