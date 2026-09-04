@@ -34,6 +34,36 @@ class PaginaInizialeTest extends TestCase
         $this->site->useAsCurrent();
     }
 
+    public function test_la_prima_pagina_di_un_sito_diventa_la_home(): void
+    {
+        // Senza questo un sito poteva restare senza pagina iniziale: la build
+        // non produceva index.html e la radice rispondeva 404. E' successo.
+        $prima = Page::create(['title' => 'Prima', 'slug' => 'prima']);
+
+        $this->assertTrue($prima->fresh()->is_home, 'La prima pagina doveva diventare la home da sola.');
+
+        $seconda = Page::create(['title' => 'Seconda', 'slug' => 'seconda']);
+
+        $this->assertFalse($seconda->fresh()->is_home, 'Solo la prima: le altre no.');
+        $this->assertTrue($prima->fresh()->is_home, 'La home non doveva cambiare.');
+    }
+
+    public function test_ogni_sito_ha_la_propria_prima_home(): void
+    {
+        Page::create(['title' => 'Prima di C', 'slug' => 'prima']);
+
+        $altro = Site::withoutTenancy()->create([
+            'tenant_id' => $this->site->tenant_id, 'domain' => 'd.test', 'name' => 'D',
+        ]);
+        $altro->useAsCurrent();
+
+        // Il controllo e' per sito: la home di un altro sito non deve
+        // impedire a questo di averne una.
+        $sua = Page::create(['title' => 'Prima di D', 'slug' => 'prima']);
+
+        $this->assertTrue($sua->fresh()->is_home);
+    }
+
     public function test_promuovere_una_pagina_degrada_la_precedente(): void
     {
         $prima = Page::create(['title' => 'Prima', 'slug' => 'prima', 'is_home' => true]);

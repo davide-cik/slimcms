@@ -32,6 +32,45 @@ const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.is_home
 const immagineOg = `https://${dominio}/og/${pagina.slug}.png`;
 const larghezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined)?.larghezza ?? 1200);
 const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined)?.altezza ?? 1600);
+
+// ---------------------------------------------------------------------------
+// Testata e pie' di pagina arrivano dal CMS, non sono cablati qui: cambiare
+// una voce di menu non deve richiedere una modifica al codice.
+// Un sito appena creato non ha ancora nessuna configurazione, quindi ogni
+// lettura ha un fallback che regge da solo. Un footer vuoto sarebbe peggio
+// di un footer minimo.
+// ---------------------------------------------------------------------------
+const nomeSito = sito?.name ?? 'SlimCMS';
+const testata = sito?.layout_config ?? {};
+const marchio = testata.nome_visibile || nomeSito;
+const mostraLogo = testata.mostra_logo !== false;
+const vociMenu = testata.voci ?? [];
+
+const pie = sito?.footer_config ?? {};
+const tipoPie = pie.tipo === 'colonne' ? 'colonne' : 'semplice';
+const colonnePie = Math.min(3, Math.max(1, Number(pie.colonne ?? 3)));
+// Piu' blocchi che colonne sarebbe contenuto scritto e mai mostrato: il
+// pannello lo impedisce, ma una configurazione vecchia puo' averne di piu'.
+const blocchiPie = (pie.blocchi ?? []).slice(0, colonnePie);
+const mostraFirma = pie.firma !== false;
+const organizzazione = pie.organizzazione ?? 'Content is King Srl';
+
+// La riga legale e' un campo di testo unico, e i separatori li scrive il
+// redattore. Emessi come testo, uno screen reader annuncia "punto mediano"
+// a ogni voce: qui tornano a essere separatori, non contenuto.
+const parti = (pie.legale ?? '').split('·').map((t) => t.trim()).filter(Boolean);
+
+// I colori del tema stanno nel CMS: qui diventano variabili CSS che
+// sovrascrivono quelle di default, senza duplicare tutto il foglio di stile.
+const tema = (sito?.theme ?? {}) as Record<string, string>;
+const variabiliTema = ['carta', 'inchiostro', 'segnale']
+  .filter((k) => typeof tema[k] === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(tema[k]))
+  .map((k) => `--${k}:${tema[k]}`)
+  .join(';');
+
+const verifiche = sito?.seo_defaults?.webmaster ?? {};
+const ga4 = sito?.seo_defaults?.analytics?.ga4 ?? null;
+const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
 ---
 
 <html lang="it">
@@ -76,22 +115,43 @@ const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined
     <link rel="preload" as="font" type="font/woff2" crossorigin
       href="/fonts/source-serif-4-latin.woff2" />
 
+    {/* Verifica della proprieta' del sito. Il meta tag e' il metodo che
+        Google, Bing e Yandex accettano tutti e tre, ed e' l'unico che non si
+        perde a un cambio di DNS o di hosting. */}
+    {verifiche.google && <meta name="google-site-verification" content={verifiche.google} />}
+    {verifiche.bing && <meta name="msvalidate.01" content={verifiche.bing} />}
+    {verifiche.yandex && <meta name="yandex-verification" content={verifiche.yandex} />}
+
     {grafo.map((n) => <script type="application/ld+json" set:html={JSON.stringify(n)} />)}
+
+    {/* Analytics: scritto solo se il sito ne ha uno configurato. Un sito
+        senza statistiche non deve pagare nessuna richiesta in piu'. */}
+    {ga4 && (
+      <>
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${ga4}`}></script>
+        <script
+          is:inline
+          set:html={`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${ga4}'${anonimizza ? ",{anonymize_ip:true}" : ''});`}
+        />
+      </>
+    )}
   </head>
 
-  <body>
+  <body style={variabiliTema}>
     <a class="skip" href="#contenuto">Vai al contenuto</a>
 
     <header class="testata">
       <a class="marchio" href="/">
-        <img src="/logo.svg" alt="" width="32" height="32" />
-        <span>SlimCMS</span>
+        {mostraLogo && <img src={sito?.logo_path ?? '/logo.svg'} alt="" width="32" height="32" />}
+        <span>{marchio}</span>
       </a>
-      <nav aria-label="Principale">
-        <a href="#capacita">Cosa fa</a>
-        <a href="#macchina">Per le macchine</a>
-        <a href="mailto:ciao@slimcms.it" class="nav-cta">Parlane con noi</a>
-      </nav>
+      {vociMenu.length > 0 && (
+        <nav aria-label="Principale">
+          {vociMenu.map((v) => (
+            <a href={v.url} class={v.evidenza ? 'nav-cta' : undefined}>{v.etichetta}</a>
+          ))}
+        </nav>
+      )}
     </header>
 
     <main id="contenuto">
@@ -99,25 +159,48 @@ const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined
     </main>
 
     <footer>
+      {tipoPie === 'colonne' && blocchiPie.length > 0 && (
+        <nav class="pie-colonne" style={`--colonne-pie:${colonnePie}`} aria-label="Collegamenti del sito">
+          {blocchiPie.map((c) => (
+            <div class="pie-colonna">
+              <h2>{c.titolo}</h2>
+              <ul>
+                {(c.voci ?? []).map((v) => (
+                  <li><a href={v.url}>{v.etichetta}</a></li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      )}
+
       <div class="pie-alto">
         <div class="pie-marchio">
-          <img src="/logo.svg" alt="" width="26" height="26" />
-          <p>SlimCMS — piattaforma CMS multitenant</p>
+          {mostraLogo && <img src={sito?.logo_path ?? '/logo.svg'} alt="" width="26" height="26" />}
+          <p>{marchio}{pie.descrizione ? ` — ${pie.descrizione}` : ''}</p>
         </div>
-        <p class="firma">
-          Piattaforma realizzata con
-          <Icona nome="cuore" etichetta="cuore" />
-          <Icona nome="cervello" etichetta="cervello" />
-          <Icona nome="braccio" etichetta="fatica" />
-          e <Icona nome="robot" etichetta="robot" />
-          in Italia da <strong>Content is King Srl</strong>
-        </p>
+        {mostraFirma && (
+          <p class="firma">
+            Piattaforma realizzata con
+            <Icona nome="cuore" etichetta="cuore" />
+            <Icona nome="cervello" etichetta="cervello" />
+            <Icona nome="braccio" etichetta="fatica" />
+            e <Icona nome="robot" etichetta="robot" />
+            in Italia da <strong>{organizzazione}</strong>
+          </p>
+        )}
       </div>
-      <p class="legale">
-        © 2026 SlimCMS <span aria-hidden="true">·</span> Content is King Srl
-        <span aria-hidden="true">·</span> via Carducci 8, 20814 Varedo (MB)
-        <span aria-hidden="true">·</span> P.IVA IT11732600967
-      </p>
+
+      {parti.length > 0 && (
+        <p class="legale">
+          {parti.map((t, i) => (
+            <>
+              {i > 0 && <span aria-hidden="true"> · </span>}
+              {t}
+            </>
+          ))}
+        </p>
+      )}
     </footer>
 
     <!--
@@ -503,6 +586,35 @@ const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined
         flex-wrap: wrap;
       }
 
+      /* Le colonne le decide il pannello, quindi il numero arriva come
+         variabile. minmax(0,1fr) e non 1fr: senza, un collegamento lungo
+         allarga la colonna oltre la griglia invece di andare a capo. */
+      .pie-colonne {
+        display: grid;
+        grid-template-columns: repeat(var(--colonne-pie, 3), minmax(0, 1fr));
+        gap: 1.6rem 2.4rem;
+        margin-bottom: 2.2rem;
+      }
+
+      .pie-colonna h2 {
+        font-size: 0.8rem;
+        font-weight: 500;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--inchiostro);
+        margin: 0 0 0.7rem;
+      }
+
+      .pie-colonna ul { list-style: none; margin: 0; padding: 0; }
+      .pie-colonna li + li { margin-top: 0.42rem; }
+
+      .pie-colonna a {
+        color: var(--inchiostro-tenue);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+      }
+      .pie-colonna a:hover { color: var(--inchiostro); border-bottom-color: var(--segnale); }
+
       .pie-marchio { display: flex; align-items: center; gap: 0.7rem; }
 
       .firma {
@@ -529,9 +641,16 @@ const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined
 
       @media (max-width: 860px) {
         .doppio { grid-template-columns: 1fr; }
+        /* Sotto i 640px affiancare due o tre elenchi li rende illeggibili:
+           si impilano, e il footer resta l'ultima cosa che si legge. */
+        .pie-colonne { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .capacita-riga { grid-template-columns: 1fr; gap: 1rem; }
         .apertura { padding-top: 3.5rem; }
         .testata nav { gap: 1.1rem; font-size: 0.87rem; }
+      }
+
+      @media (max-width: 640px) {
+        .pie-colonne { grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
       }
     </style>
   </body>

@@ -109,9 +109,13 @@ class SiteIsolationTest extends TestCase
     public function test_force_delete_su_istanza_cancella_solo_quella_riga(): void
     {
         $this->siteA->useAsCurrent();
-        Page::first()->forceDelete();
 
-        $this->assertSame(0, Page::withTrashed()->count());
+        // La prima pagina di un sito ne diventa la home, e la home non si
+        // cancella: qui serve una seconda pagina, che e' anche il caso vero.
+        Page::create(['title' => 'Seconda di A', 'slug' => 'seconda-a'])->forceDelete();
+
+        $this->assertSame(1, Page::withTrashed()->count());
+        $this->assertSame('pagina-a', Page::first()->slug);
 
         $this->siteB->useAsCurrent();
         $this->assertSame(1, Page::withTrashed()->count(), 'Il forceDelete su istanza ha superato il confine del sito.');

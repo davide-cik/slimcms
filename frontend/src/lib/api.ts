@@ -19,6 +19,8 @@ export interface Pagina {
   id: number;
   title: string;
   slug: string;
+  /** Su quante colonne si dispongono i blocchi di corpo. */
+  colonne: number;
   /** Quale pagina sta sulla radice: lo dice il flag, non lo slug. */
   is_home: boolean;
   status: string;
@@ -72,6 +74,59 @@ async function chiama<T>(percorso: string): Promise<T> {
   return risposta.json() as Promise<T>;
 }
 
+export interface VoceFooter {
+  etichetta: string;
+  url: string;
+}
+
+export interface ColonnaFooter {
+  titolo: string;
+  voci?: VoceFooter[];
+}
+
+export interface ConfigFooter {
+  tipo?: 'semplice' | 'colonne';
+  colonne?: number;
+  blocchi?: ColonnaFooter[];
+  descrizione?: string;
+  firma?: boolean;
+  organizzazione?: string;
+  legale?: string;
+}
+
+export interface VoceMenu {
+  etichetta: string;
+  url: string;
+  evidenza?: boolean;
+}
+
+export interface ConfigLayout {
+  mostra_logo?: boolean;
+  nome_visibile?: string;
+  voci?: VoceMenu[];
+  doppio?: {
+    attivo?: boolean;
+    etichetta?: string;
+    testo?: string;
+  };
+}
+
+/** I valori di `seo_defaults` che il layout usa davvero. */
+export interface SeoDiSito {
+  publisher?: string;
+  og_image?: string;
+  webmaster?: {
+    google?: string | null;
+    bing?: string | null;
+    yandex?: string | null;
+  };
+  analytics?: {
+    ga4?: string | null;
+    anonimizza?: boolean;
+  };
+  [chiave: string]: unknown;
+}
+
 export interface Sito {
   id: number;
   domain: string;
@@ -81,8 +136,10 @@ export interface Sito {
   favicon_svg: string;
   favicon_iniziali: string;
   theme: Record<string, unknown>;
-  seo_defaults: Record<string, unknown>;
+  seo_defaults: SeoDiSito;
   og_config: Record<string, unknown>;
+  footer_config: ConfigFooter;
+  layout_config: ConfigLayout;
 }
 
 export async function sito(): Promise<Sito> {

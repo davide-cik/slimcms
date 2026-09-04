@@ -18,6 +18,8 @@ use Filament\Forms\Components\Radio;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Forms\Components\Placeholder;
 use Illuminate\Support\HtmlString;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -154,6 +156,185 @@ class SiteResource extends Resource
                         // Passando a "generata" il file va tolto, altrimenti
                         // resterebbe e continuerebbe ad avere la precedenza.
                         ->dehydrateStateUsing(fn ($state, Get $get) => $get('favicon_modo') === 'caricata' ? $state : null),
+                ])->columns(2),
+
+            Section::make('Testata')
+                ->description('Il marchio e il menu in cima a ogni pagina del sito.')
+                ->schema([
+                    Toggle::make('layout_config.mostra_logo')
+                        ->label('Mostra il logo accanto al nome')
+                        ->default(true),
+
+                    TextInput::make('layout_config.nome_visibile')
+                        ->label('Nome mostrato')
+                        ->maxLength(60)
+                        ->helperText('Vuoto: si usa il nome del sito.'),
+
+                    Repeater::make('layout_config.voci')
+                        ->label('Voci di menu')
+                        ->columnSpanFull()
+                        ->schema([
+                            TextInput::make('etichetta')->label('Testo')->required()->maxLength(40),
+                            TextInput::make('url')->label('Indirizzo')->required()->maxLength(300)
+                                ->helperText('Interno come /chi-siamo/, ancora come /#capacita, oppure completo con https://'),
+                            Toggle::make('evidenza')
+                                ->label('In evidenza')
+                                ->helperText('L\'ultima voce, quella che invita a scrivere o comprare.'),
+                        ])
+                        ->columns(3)
+                        ->defaultItems(0)
+                        ->reorderable()
+                        ->itemLabel(fn (array $state): ?string => $state['etichetta'] ?? null)
+                        ->addActionLabel('Aggiungi voce'),
+                ])->columns(2),
+
+            Section::make('Footer')
+                ->description('Cosa compare in fondo a ogni pagina del sito.')
+                ->schema([
+                    Radio::make('footer_config.tipo')
+                        ->label('Tipo')
+                        ->options([
+                            'semplice' => 'Semplice — solo firma e dati legali',
+                            'colonne' => 'A colonne — con elenchi di collegamenti',
+                        ])
+                        ->default('semplice')
+                        ->live()
+                        ->inline()
+                        ->inlineLabel(false)
+                        ->columnSpanFull(),
+
+                    Select::make('footer_config.colonne')
+                        ->label('Numero di colonne')
+                        ->options([1 => 'Una', 2 => 'Due', 3 => 'Tre'])
+                        ->default(3)
+                        ->live()
+                        ->visible(fn (Get $get): bool => $get('footer_config.tipo') === 'colonne')
+                        ->helperText('Su telefono le colonne si impilano comunque: sotto i 480px affiancarle le renderebbe illeggibili.'),
+
+                    Repeater::make('footer_config.blocchi')
+                        ->label('Colonne')
+                        ->visible(fn (Get $get): bool => $get('footer_config.tipo') === 'colonne')
+                        ->columnSpanFull()
+                        // Il numero di colonne decide quante se ne possono
+                        // riempire: piu' blocchi che colonne sarebbe contenuto
+                        // scritto e mai mostrato.
+                        ->maxItems(fn (Get $get): int => (int) ($get('footer_config.colonne') ?? 3))
+                        ->schema([
+                            TextInput::make('titolo')->label('Titolo')->required()->maxLength(60),
+                            Repeater::make('voci')
+                                ->label('Collegamenti')
+                                ->schema([
+                                    TextInput::make('etichetta')->label('Testo')->required()->maxLength(60),
+                                    TextInput::make('url')->label('Indirizzo')->required()->maxLength(300)
+                                        ->helperText('Interno come /chi-siamo, oppure completo con https://'),
+                                ])
+                                ->columns(2)
+                                ->defaultItems(1)
+                                ->addActionLabel('Aggiungi collegamento'),
+                        ])
+                        ->defaultItems(0)
+                        ->collapsed()
+                        ->itemLabel(fn (array $state): ?string => $state['titolo'] ?? null)
+                        ->addActionLabel('Aggiungi colonna'),
+
+                    TextInput::make('footer_config.descrizione')
+                        ->label('Descrizione accanto al nome')
+                        ->maxLength(120)
+                        ->placeholder('piattaforma CMS multitenant'),
+
+                    Toggle::make('footer_config.firma')
+                        ->label('Mostra la firma con le icone')
+                        ->default(true)
+                        ->helperText('La riga "realizzata con ... in Italia da".'),
+
+                    TextInput::make('footer_config.organizzazione')
+                        ->label('Chi ha realizzato il sito')
+                        ->maxLength(120)
+                        ->placeholder('Content is King Srl')
+                        ->visible(fn (Get $get): bool => (bool) $get('footer_config.firma')),
+
+                    Textarea::make('footer_config.legale')
+                        ->label('Riga legale')
+                        ->rows(2)
+                        ->maxLength(300)
+                        ->columnSpanFull()
+                        ->placeholder('© 2026 Nome · Ragione sociale · indirizzo · P.IVA'),
+                ])->columns(2),
+
+            Section::make('Doppio registro')
+                ->description('La sezione che mostra al visitatore i dati che leggono i motori generativi. Compare solo nelle pagine che hanno un riassunto strutturato o dei fatti chiave.')
+                ->schema([
+                    Toggle::make('layout_config.doppio.attivo')
+                        ->label('Mostrala nel sito')
+                        ->live()
+                        ->default(false),
+
+                    TextInput::make('layout_config.doppio.etichetta')
+                        ->label('Occhiello')
+                        ->maxLength(60)
+                        ->placeholder('Questa pagina, due volte')
+                        ->visible(fn (Get $get): bool => (bool) $get('layout_config.doppio.attivo')),
+
+                    Textarea::make('layout_config.doppio.testo')
+                        ->label('Testo introduttivo')
+                        ->rows(3)
+                        ->maxLength(600)
+                        ->columnSpanFull()
+                        ->visible(fn (Get $get): bool => (bool) $get('layout_config.doppio.attivo')),
+                ])->columns(2),
+
+            Section::make('Area webmaster')
+                ->description('I codici di verifica della proprieta\' del sito. Astro li scrive come meta tag in ogni pagina: e\' il metodo che tutti e tre i motori accettano e l\'unico che non si perde a un cambio di DNS o di hosting.')
+                ->schema([
+                    TextInput::make('seo_defaults.webmaster.google')
+                        ->label('Google Search Console')
+                        ->maxLength(120)
+                        ->helperText('Solo il contenuto del meta google-site-verification, non il tag intero.')
+                        ->placeholder('AbCdEf1234...')
+                        // Chi incolla il tag intero non ha sbagliato: e' quello
+                        // che Google mostra per primo. Estraiamo il valore
+                        // invece di salvare markup che finirebbe escapato.
+                        ->dehydrateStateUsing(fn (?string $state): ?string => self::codiceVerifica($state)),
+
+                    TextInput::make('seo_defaults.webmaster.bing')
+                        ->label('Bing Webmaster Tools')
+                        ->maxLength(120)
+                        ->helperText('Il valore del meta msvalidate.01.')
+                        ->dehydrateStateUsing(fn (?string $state): ?string => self::codiceVerifica($state)),
+
+                    TextInput::make('seo_defaults.webmaster.yandex')
+                        ->label('Yandex Webmaster')
+                        ->maxLength(120)
+                        ->helperText('Il valore del meta yandex-verification.')
+                        ->dehydrateStateUsing(fn (?string $state): ?string => self::codiceVerifica($state)),
+
+                    Placeholder::make('nota_webmaster')
+                        ->label('Dopo aver salvato')
+                        ->columnSpanFull()
+                        ->content('Il meta tag compare online alla prima pubblicazione del sito, non subito: fai una build prima di premere "Verifica" nella console del motore.'),
+                ])->columns(3),
+
+            Section::make('Statistiche')
+                ->description('Google Analytics 4. Lo script viene scritto nelle pagine solo se qui c\'e\' un ID: un sito senza analytics non paga nessuna richiesta in piu\'.')
+                ->schema([
+                    TextInput::make('seo_defaults.analytics.ga4')
+                        ->label('ID misurazione GA4')
+                        ->placeholder('G-XXXXXXXXXX')
+                        ->maxLength(20)
+                        // Il vecchio UA-, l'ID di stream numerico e l'ID GTM
+                        // sono tre cose diverse che si incollano per sbaglio al
+                        // posto di questo: meglio dirlo subito che scoprire fra
+                        // un mese che non arrivano dati.
+                        // Insensibile alle maiuscole in ingresso, canonica in uscita:
+                        // rifiutare 'g-abc123' sarebbe pedanteria, non validazione.
+                        ->rule('regex:/^G-[A-Z0-9]{6,12}$/i')
+                        ->validationMessages(['regex' => 'Deve iniziare con G- (e\' il "measurement ID", non l\'ID stream ne\' un codice GTM).'])
+                        ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? strtoupper(trim($state)) : null),
+
+                    Toggle::make('seo_defaults.analytics.anonimizza')
+                        ->label('Non registrare l\'indirizzo IP')
+                        ->default(true)
+                        ->helperText('Aggiunge client_storage e ip anonimo alla configurazione. Consigliato in UE.'),
                 ])->columns(2),
 
             Section::make('Immagine di condivisione')
@@ -382,5 +563,24 @@ class SiteResource extends Resource
             'create' => Pages\CreateSite::route('/create'),
             'edit' => Pages\EditSite::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Accetta sia il codice nudo sia il tag <meta> completo che le console
+     * mostrano per primo, e restituisce sempre il solo codice.
+     */
+    protected static function codiceVerifica(?string $valore): ?string
+    {
+        $valore = trim((string) $valore);
+
+        if ($valore === '') {
+            return null;
+        }
+
+        if (preg_match('/content=["\']([^"\']+)["\']/', $valore, $trovato) === 1) {
+            return $trovato[1];
+        }
+
+        return $valore;
     }
 }

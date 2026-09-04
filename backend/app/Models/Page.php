@@ -28,6 +28,7 @@ class Page extends Model implements HasMedia
         'title',
         'slug',
         'is_home',
+        'colonne',
         'blocks',
         'seo',
         'status',
@@ -43,6 +44,26 @@ class Page extends Model implements HasMedia
      */
     public static function booted(): void
     {
+        // Un sito senza pagina iniziale risponde 404 sulla propria radice e
+        // la build non produce nemmeno un index.html: e' successo davvero.
+        // La prima pagina di un sito diventa la home da sola, cosi' la regola
+        // "un sito ha sempre una home" vale per costruzione e non per
+        // disciplina di chi scrive i seeder.
+        static::creating(function (self $pagina): void {
+            if ($pagina->is_home) {
+                return;
+            }
+
+            $esiste = static::withoutSiteScope()
+                ->where('site_id', $pagina->site_id)
+                ->where('is_home', true)
+                ->exists();
+
+            if (! $esiste) {
+                $pagina->is_home = true;
+            }
+        });
+
         static::saved(function (self $pagina): void {
             if (! $pagina->is_home) {
                 return;
@@ -91,6 +112,7 @@ class Page extends Model implements HasMedia
     {
         return [
             'is_home' => 'boolean',
+            'colonne' => 'integer',
             'blocks' => 'array',
             'seo' => 'array',
             'publish_at' => 'datetime',

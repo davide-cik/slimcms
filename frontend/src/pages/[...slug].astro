@@ -24,24 +24,27 @@ export async function getStaticPaths() {
 
 const { pagina, sito: infoSito } = Astro.props as { pagina: Pagina; sito: Sito };
 const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
+
+// Il doppio registro e' una scelta del sito, non del layout: c'e' solo se il
+// pannello l'ha attivato, e il testo introduttivo e' quello scritto li'.
+const doppio = infoSito?.layout_config?.doppio ?? {};
+const mostraDoppio =
+  doppio.attivo === true &&
+  (Boolean(pagina.geo.structured_summary) || pagina.geo.key_facts.length > 0);
 ---
 
 <Base pagina={pagina} dominio={dominio} sito={infoSito}>
-  <Blocchi blocchi={pagina.blocks} />
+  <Blocchi blocchi={pagina.blocks} colonne={pagina.colonne} />
 
   {/* Il doppio registro: la firma della pagina. Quello che legge una
       persona sopra, quello che legge un crawler qui sotto — generato dagli
       stessi campi, non scritto a mano. */}
   {
-    (pagina.geo.structured_summary || pagina.geo.key_facts.length > 0) && (
+    mostraDoppio && (
       <section class="doppio" id="macchina">
         <div class="doppio-testa">
-          <span class="etichetta">Questa pagina, due volte</span>
-          <p>
-            Ogni pagina fatta con SlimCMS esiste in due versioni contemporaneamente. Quella
-            che stai leggendo, e quella qui sotto: la sola che vedono Google, Perplexity e
-            ChatGPT. La seconda non è un ripensamento, si scrive insieme alla prima.
-          </p>
+          {doppio.etichetta && <span class="etichetta">{doppio.etichetta}</span>}
+          {doppio.testo && <p>{doppio.testo}</p>}
         </div>
 
         {pagina.geo.structured_summary && (

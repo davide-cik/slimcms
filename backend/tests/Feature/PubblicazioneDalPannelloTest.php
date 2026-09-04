@@ -56,6 +56,11 @@ class PubblicazioneDalPannelloTest extends TestCase
         Filament::setTenant($this->site, isQuiet: true);
         $this->site->useAsCurrent();
 
+        // Ogni sito ha una pagina iniziale: senza, la prima pagina creata dal
+        // test verrebbe promossa a home e finirebbe sulla radice invece che
+        // sul proprio slug. E' il caso reale, non un dettaglio del test.
+        Page::create(['title' => 'Home', 'slug' => 'home', 'is_home' => true]);
+
         // La creazione del sito ne accoda gia' una: azzeriamo per contare
         // solo quelle prodotte dalla pubblicazione.
         BuildRequest::query()->delete();

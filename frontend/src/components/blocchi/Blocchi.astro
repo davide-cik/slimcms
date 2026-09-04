@@ -3,9 +3,15 @@ import type { Blocco } from '../../lib/api';
 
 interface Props {
   blocchi: Blocco[];
+  /** Su quante colonne disporre i blocchi di corpo. L'apertura resta intera. */
+  colonne?: number;
 }
 
-const { blocchi } = Astro.props;
+const { blocchi, colonne = 1 } = Astro.props;
+
+// Il pannello offre 1, 2 o 3: un valore fuori scala arriva solo da dati
+// vecchi o scritti a mano, e non deve produrre una griglia assurda.
+const colonneValide = Math.min(3, Math.max(1, Number(colonne) || 1));
 
 /**
  * I blocchi arrivano nel formato del Builder di Filament: { type, data }.
@@ -18,6 +24,7 @@ const elenco = blocchi.map((b) => ({
 }));
 ---
 
+<div class="corpo-pagina" data-colonne={colonneValide} style={`--colonne-corpo:${colonneValide}`}>
 {
   elenco.map(({ tipo, d: b }) => {
     switch (tipo) {
@@ -98,6 +105,44 @@ const elenco = blocchi.map((b) => ({
     }
   })
 }
+</div>
+
+<style is:global>
+  /* Le sezioni si impaginano da sole (max-width + margini automatici): dentro
+     una griglia quel vincolo le stringerebbe due volte, una per la colonna e
+     una per conto proprio. Qui il contenitore fa da misura, le sezioni no.
+     is:global perche' le regole delle sezioni stanno in Base.astro: uno
+     stile scoped qui non le raggiungerebbe. */
+  .corpo-pagina[data-colonne='1'] { display: block; }
+
+  .corpo-pagina:not([data-colonne='1']) {
+    display: grid;
+    grid-template-columns: repeat(var(--colonne-corpo, 1), minmax(0, 1fr));
+    gap: 0 2.6rem;
+    max-width: var(--misura);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    align-items: start;
+  }
+
+  .corpo-pagina:not([data-colonne='1']) > section {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* L'apertura non entra in colonna: e' il titolo della pagina, e spezzarlo
+     su un terzo di larghezza lo renderebbe un sommario qualsiasi. */
+  .corpo-pagina:not([data-colonne='1']) > .apertura {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 860px) {
+    /* Su telefono si impila tutto: due colonne di testo su 360px non si
+       leggono, e la griglia non e' il contenuto. */
+    .corpo-pagina:not([data-colonne='1']) { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
 
 <style>
   .galleria {

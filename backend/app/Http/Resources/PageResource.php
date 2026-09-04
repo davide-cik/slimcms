@@ -28,6 +28,7 @@ class PageResource extends JsonResource
             // Quale pagina sta sulla radice del dominio lo decide questo
             // flag, non lo slug: Astro non deve piu' indovinare.
             'is_home' => (bool) $this->is_home,
+            'colonne' => (int) ($this->colonne ?: 1),
             'status' => $this->status,
             'published_at' => $this->publish_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

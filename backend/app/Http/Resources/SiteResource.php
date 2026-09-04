@@ -22,6 +22,8 @@ class SiteResource extends JsonResource
             'theme' => $this->theme ?? [],
             'seo_defaults' => $this->seo_defaults ?? [],
             'og_config' => $this->og_config ?? [],
+            'footer_config' => $this->footer_config ?? [],
+            'layout_config' => $this->layout_config ?? [],
         ];
     }
 }

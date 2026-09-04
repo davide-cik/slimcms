@@ -58,6 +58,13 @@ class PageForm
                         // promuoverne un'altra.
                         ->dehydrated(fn (?\App\Models\Page $record): bool => ! $record?->is_home),
 
+                    Select::make('colonne')
+                        ->label('Colonne del contenuto')
+                        ->options([1 => 'Una', 2 => 'Due', 3 => 'Tre'])
+                        ->default(1)
+                        ->required()
+                        ->helperText('I blocchi si dispongono su questo numero di colonne. L\'apertura resta sempre a tutta larghezza, e su telefono si impila tutto.'),
+
                     self::blocchi(),
                 ])->columns(1),
 

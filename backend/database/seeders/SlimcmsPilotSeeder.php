@@ -45,22 +45,21 @@ class SlimcmsPilotSeeder extends Seeder
 
         // Site usa il trait di stancl: senza tenancy inizializzata lo scope e'
         // inerte e tenant_id non viene assegnato da solo, quindi lo passiamo.
-        $site = Site::withoutTenancy()->firstOrCreate(
-            ['domain' => 'slimcms.it'],
-            [
+        $predefiniti = array_merge([
                 'tenant_id' => $tenant->id,
                 'name' => 'SlimCMS',
-                'theme' => [
-                    'carta' => '#f4f4f1',
-                    'inchiostro' => '#16181c',
-                    'segnale' => '#0f6b4a',
-                ],
-                'seo_defaults' => [
-                    'og_image' => '/logo.svg',
-                    'publisher' => 'Content is King Srl',
-                ],
-            ]
+            ], ConfigurazioneSitoPilotaSeeder::predefiniti());
+
+        $site = Site::withoutTenancy()->firstOrCreate(
+            ['domain' => 'slimcms.it'],
+            $predefiniti
         );
+
+        // firstOrCreate NON applica gli attributi se la riga esiste gia':
+        // il backfill dei soli campi vuoti lo fa il seeder dedicato, lo
+        // stesso che si lancia in produzione.
+        $this->call(ConfigurazioneSitoPilotaSeeder::class);
+        $site->refresh();
 
         // Da qui in poi le Page sanno a quale sito appartengono.
         $site->useAsCurrent();
@@ -69,6 +68,9 @@ class SlimcmsPilotSeeder extends Seeder
             ['slug' => 'home'],
             [
                 'title' => 'Un CMS per chi gestisce venti siti, non uno',
+                // Esplicito: senza, la radice del sito non esiste e la build
+                // non produce index.html.
+                'is_home' => true,
                 'status' => 'published',
                 'publish_at' => now(),
                 'blocks' => ContenutoHomeSlimcms::blocchi(),
