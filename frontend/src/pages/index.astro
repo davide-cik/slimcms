@@ -23,6 +23,19 @@ const jsonLd = {
   description: structuredSummary,
   url: "https://slimcms.it",
   offers: { "@type": "Offer", priceCurrency: "EUR", price: "0" },
+  publisher: {
+    "@type": "Organization",
+    name: "Content is King Srl",
+    vatID: "IT11732600967",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "via Carducci 8",
+      postalCode: "20814",
+      addressLocality: "Varedo",
+      addressRegion: "MB",
+      addressCountry: "IT",
+    },
+  },
 };
 
 const capacita = [
@@ -162,9 +175,25 @@ const capacita = [
     </main>
 
     <footer>
-      <img src="/logo.svg" alt="" width="26" height="26" />
-      <p>SlimCMS — piattaforma CMS multitenant</p>
-      <p class="fioco">Fatto in Italia</p>
+      <div class="pie-alto">
+        <div class="pie-marchio">
+          <img src="/logo.svg" alt="" width="26" height="26" />
+          <p>SlimCMS — piattaforma CMS multitenant</p>
+        </div>
+        <p class="firma">
+          Piattaforma realizzata con
+          <span class="emoji" role="img" aria-label="cuore">❤️</span>
+          <span class="emoji" role="img" aria-label="cervello">🧠</span>
+          <span class="emoji" role="img" aria-label="braccio">💪</span>
+          e <span class="emoji" role="img" aria-label="robot">🤖</span>
+          in Italia da <strong>Content is King Srl</strong>
+        </p>
+      </div>
+      <p class="legale">
+        © 2026 SlimCMS <span aria-hidden="true">·</span> Content is King Srl
+        <span aria-hidden="true">·</span> via Carducci 8, 20814 Varedo (MB)
+        <span aria-hidden="true">·</span> P.IVA IT11732600967
+      </p>
     </footer>
 
     <style>
@@ -459,16 +488,35 @@ const capacita = [
         margin: 0 auto;
         padding: 2rem 1.5rem 3.5rem;
         border-top: 1px solid var(--riga);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
         font-family: var(--display);
         font-size: 0.88rem;
         color: var(--inchiostro-tenue);
       }
       footer p { margin: 0; }
-      .fioco { margin-left: auto !important; opacity: 0.65; }
+
+      .pie-alto {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.2rem 2rem;
+        flex-wrap: wrap;
+      }
+
+      .pie-marchio { display: flex; align-items: center; gap: 0.7rem; }
+
+      .firma { max-width: 44ch; }
+      .firma strong { color: var(--inchiostro); font-weight: 500; }
+      /* le emoji restano alla loro dimensione naturale, allineate al testo */
+      .firma .emoji { font-size: 1.02em; line-height: 1; }
+
+      .legale {
+        margin-top: 1.6rem !important;
+        padding-top: 1.3rem;
+        border-top: 1px solid var(--riga);
+        font-size: 0.79rem;
+        opacity: 0.75;
+        line-height: 1.7;
+      }
 
       /* ---------- adattivo ---------- */
 
