@@ -80,11 +80,34 @@ export interface Sito {
   favicon_iniziali: string;
   theme: Record<string, unknown>;
   seo_defaults: Record<string, unknown>;
+  og_config: Record<string, unknown>;
 }
 
 export async function sito(): Promise<Sito> {
   const { data } = await chiama<{ data: Sito }>('');
   return data;
+}
+
+/**
+ * Immagine Open Graph di un contenuto, in byte.
+ *
+ * Si scarica in build e si scrive come file statico del sito: i social la
+ * rileggono a ogni condivisione e devono trovarla sul dominio del sito, non
+ * dietro un token dell'API.
+ */
+export async function immagineOpenGraph(slug: string): Promise<ArrayBuffer> {
+  if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');
+
+  const percorso = slug === 'home' ? '/og.png' : `/og/${slug}.png`;
+  const risposta = await fetch(`${BASE}/sites/${SITE}${percorso}`, {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+
+  if (!risposta.ok) {
+    throw new Error(`Immagine Open Graph per "${slug}": ${risposta.status} ${risposta.statusText}`);
+  }
+
+  return risposta.arrayBuffer();
 }
 
 export async function elencoPagine(): Promise<Pagina[]> {

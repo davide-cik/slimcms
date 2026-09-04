@@ -26,6 +26,11 @@ const editore = {
 
 const grafo = grafoJsonLd(pagina, dominio, editore);
 const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug === 'home' ? '/' : `/${pagina.slug}/`}`;
+
+// L'immagine Open Graph e' un file del sito, generato in build da /og/<slug>.png.
+const immagineOg = `https://${dominio}/og/${pagina.slug}.png`;
+const larghezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined)?.larghezza ?? 1200);
+const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined)?.altezza ?? 1600);
 ---
 
 <html lang="it">
@@ -44,6 +49,18 @@ const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug ==
     <meta property="og:title" content={pagina.seo.og_title ?? pagina.seo.meta_title} />
     {pagina.seo.og_description && <meta property="og:description" content={pagina.seo.og_description} />}
     <meta property="og:url" content={canonico} />
+
+    {/* Immagine generata dalla piattaforma e scritta come file del sito: i
+        social la rileggono a ogni condivisione e devono trovarla qui, non
+        dietro un token dell'API. URL assoluta perche' Facebook e LinkedIn
+        non risolvono i percorsi relativi. */}
+    <meta property="og:image" content={immagineOg} />
+    <meta property="og:image:width" content={String(larghezzaOg)} />
+    <meta property="og:image:height" content={String(altezzaOg)} />
+    {pagina.seo.meta_title && <meta property="og:image:alt" content={pagina.seo.meta_title} />}
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={immagineOg} />
 
     {/*
       Preload dei SOLI due font necessari al primo rendering: il titolo usa

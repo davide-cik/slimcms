@@ -6,6 +6,8 @@ use App\ControlPlane\Filament\Resources\Sites\RelationManagers\RedattoriRelation
 use App\Models\Impersonazione;
 use App\Models\User;
 use Filament\Actions\Action as AzioneRiga;
+use Filament\Forms\Components\Textarea;
+use App\Services\GeneratoreOpenGraph;
 use App\Models\Site;
 use App\Services\StatoDominio;
 use BackedEnum;
@@ -152,6 +154,73 @@ class SiteResource extends Resource
                         // Passando a "generata" il file va tolto, altrimenti
                         // resterebbe e continuerebbe ad avere la precedenza.
                         ->dehydrateStateUsing(fn ($state, Get $get) => $get('favicon_modo') === 'caricata' ? $state : null),
+                ])->columns(2),
+
+            Section::make('Immagine di condivisione')
+                ->description('L\'anteprima che compare quando qualcuno condivide una pagina di questo sito.')
+                ->schema([
+                    Textarea::make('og_config.payoff')
+                        ->label('Payoff')
+                        ->rows(2)
+                        ->maxLength(160)
+                        ->helperText('Una riga sotto il titolo. Tienila corta: nell\'anteprima si legge in un istante.'),
+
+                    TextInput::make('og_config.cta')
+                        ->label('Invito all\'azione')
+                        ->maxLength(40)
+                        ->placeholder('Visita il nostro sito'),
+
+                    Textarea::make('og_config.legale')
+                        ->label('Riga legale')
+                        ->rows(2)
+                        ->maxLength(200)
+                        ->helperText('In fondo all\'immagine. Su Facebook e LinkedIn viene ritagliata via: mettici solo cio\' che puoi permetterti di perdere.'),
+
+                    TextInput::make('og_config.larghezza')
+                        ->label('Larghezza')
+                        ->numeric()->minValue(600)->maxValue(2400)
+                        ->default(GeneratoreOpenGraph::LARGHEZZA_DEFAULT)
+                        ->suffix('px'),
+
+                    TextInput::make('og_config.altezza')
+                        ->label('Altezza')
+                        ->numeric()->minValue(600)->maxValue(2400)
+                        ->default(GeneratoreOpenGraph::ALTEZZA_DEFAULT)
+                        ->suffix('px')
+                        ->helperText('1600 e\' verticale, adatto a Instagram. 630 e\' orizzontale.'),
+
+                    // Due anteprime, non una: la seconda e' cio' che vedono
+                    // davvero Facebook e LinkedIn, che ritagliano al centro.
+                    // Mostrare solo la prima farebbe credere che l'immagine
+                    // arrivi intera a tutti.
+                    Placeholder::make('anteprima_og')
+                        ->label('Anteprima')
+                        ->visibleOn('edit')
+                        ->columnSpanFull()
+                        ->content(function (?Site $record): HtmlString {
+                            if ($record === null) {
+                                return new HtmlString('<p>Salva il sito per vedere l\'anteprima.</p>');
+                            }
+
+                            $base = route('anteprima.og', $record) . '?v=' . now()->timestamp;
+
+                            return new HtmlString(<<<HTML
+                                <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start">
+                                  <figure style="margin:0">
+                                    <img src="{$base}" alt="" style="max-width:220px;border-radius:6px;border:1px solid #d4d4d8">
+                                    <figcaption style="font-size:.75rem;opacity:.7;margin-top:.4rem">
+                                      Instagram &middot; immagine intera
+                                    </figcaption>
+                                  </figure>
+                                  <figure style="margin:0">
+                                    <img src="{$base}&ritaglio=1" alt="" style="max-width:360px;border-radius:6px;border:1px solid #d4d4d8">
+                                    <figcaption style="font-size:.75rem;opacity:.7;margin-top:.4rem">
+                                      Facebook, LinkedIn, WhatsApp &middot; ritagliata al centro
+                                    </figcaption>
+                                  </figure>
+                                </div>
+                                HTML);
+                        }),
                 ])->columns(2),
 
             Section::make('Stato del dominio')

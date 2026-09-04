@@ -20,3 +20,13 @@ Route::get('/impersona/{token}', [ImpersonazioneController::class, 'entra'])
 Route::post('/impersona/esci', [ImpersonazioneController::class, 'esci'])
     ->middleware('web')
     ->name('impersona.esci');
+
+use App\Http\Controllers\AnteprimaOpenGraphController;
+
+/*
+ * Anteprima dell'immagine Open Graph nel control plane. Non e' sotto /api
+ * perche' l'autorizzazione qui e' la sessione, non un token di build.
+ */
+Route::get('/anteprima-og/{site}', AnteprimaOpenGraphController::class)
+    ->middleware('web')
+    ->name('anteprima.og');

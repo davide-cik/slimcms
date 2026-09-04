@@ -21,6 +21,7 @@ class SiteResource extends JsonResource
             'favicon_iniziali' => $this->faviconIniziali(),
             'theme' => $this->theme ?? [],
             'seo_defaults' => $this->seo_defaults ?? [],
+            'og_config' => $this->og_config ?? [],
         ];
     }
 }

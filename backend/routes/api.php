@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BuildWebhookController;
+use App\Http\Controllers\Api\OpenGraphController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\SitePageController;
 use App\Http\Controllers\Api\SitePostController;
@@ -37,6 +38,9 @@ Route::prefix('sites/{site}')
         Route::get('posts', [SitePostController::class, 'index']);
         Route::get('posts/{slug}', [SitePostController::class, 'show']);
         Route::get('sitemap', [SitePageController::class, 'sitemap']);
+        // Immagini Open Graph: PNG, perche' i social non accettano SVG.
+        Route::get('og.png', [OpenGraphController::class, 'sito']);
+        Route::get('og/{slug}.png', [OpenGraphController::class, 'contenuto']);
         Route::get('builds', [BuildWebhookController::class, 'index']);
         Route::post('builds', [BuildWebhookController::class, 'store']);
     });
