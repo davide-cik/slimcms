@@ -9,15 +9,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Image\Enums\Fit;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Articolo del blog. Stessa struttura di Page piu' autore, categorie,
  * tag, estratto e immagine di copertina (specifiche, sezione 5).
  */
-class Post extends Model
+class Post extends Model implements HasMedia
 {
     use BelongsToSite;
     use HasFactory;
+    use InteractsWithMedia;
     use SoftDeletes;
 
     protected $fillable = [
@@ -42,6 +47,27 @@ class Post extends Model
             'seo' => 'array',
             'publish_at' => 'datetime',
         ];
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('copertina')
+            ->singleFile()
+            ->useDisk(config('media-library.disk_name'));
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('anteprima')->fit(Fit::Contain, 320, 320)->nonQueued();
+        $this->addMediaConversion('web')->fit(Fit::Max, 1600, 1600)->nonQueued();
+    }
+
+    /** URL della copertina, se c'e'. */
+    public function copertinaUrl(string $conversione = 'web'): ?string
+    {
+        $m = $this->getFirstMedia('copertina');
+
+        return $m?->hasGeneratedConversion($conversione) ? $m->getUrl($conversione) : $m?->getUrl();
     }
 
     public function author(): BelongsTo

@@ -38,6 +38,18 @@ return [
             'report' => false,
         ],
 
+        // Disco dei media dei siti. In produzione va puntato a un bucket
+        // S3-compatible (Cloudflare R2, specifiche sezione 3) cambiando solo
+        // MEDIA_DISK: i percorsi tenants/<id>/media/ restano identici, perche'
+        // li genera TenantPathGenerator e non dipendono dal driver.
+        'media' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/media'),
+            'url' => env('APP_URL').'/storage/media',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Posts\Schemas;
 use App\Filament\Resources\Pages\Schemas\PageForm;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -68,9 +69,19 @@ class PostForm
                         ->preload()
                         ->helperText('Solo i redattori di questo sito.'),
 
-                    TextInput::make('featured_image_path')
+                    SpatieMediaLibraryFileUpload::make('copertina')
                         ->label('Immagine di copertina')
-                        ->helperText('Percorso del file. Diventera un selettore quando ci sara la media library.'),
+                        ->collection('copertina')
+                        ->image()
+                        ->imageEditor()
+                        ->maxSize(8192)
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                        ->columnSpanFull()
+                        // L'alt viene salvato fra le custom properties del
+                        // media, non su una colonna del post: e' una proprieta'
+                        // del file, e lo segue ovunque venga riusato.
+                        ->customProperties(fn (): array => [])
+                        ->helperText('Massimo 8 MB. Ricordati il testo alternativo dalla libreria media.'),
                 ])->columns(2),
 
                 Tabs\Tab::make('Pubblicazione')->schema([

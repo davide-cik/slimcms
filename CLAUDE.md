@@ -185,6 +185,44 @@ Da rimuovere quando stancl sistemerà la cosa a monte.
   e per le poche funzioni dinamiche: ricerca interna, form contatto.
 - **Astro non fa fetch a runtime** per il contenuto: lo riceve in fase di build.
 
+## Libreria media
+
+Basata su `spatie/laravel-medialibrary`, con **due modifiche non standard che sono
+strutturali, non cosmetiche**:
+
+1. **`site_id` aggiunto alla tabella `media`** e modello `App\Models\Media` con
+   `BelongsToSite`, registrato in `config/media-library.php → media_model`. La tabella di
+   Spatie è solo polimorfa (`model_type`/`model_id`): senza colonna di scoping sfuggirebbe
+   al global scope su cui poggia tutto l'isolamento, e il file di un cliente sarebbe
+   elencabile da un altro. Con la colonna, `TenantScopeTest` la copre automaticamente.
+2. **`TenantPathGenerator`** produce `tenants/<tenant-id>/media/<id>/` come da specifiche
+   §3. Il default di Spatie usa solo l'id del media: i file di clienti diversi finirebbero
+   mescolati nella stessa cartella, rendendo impossibile un backup, una cancellazione o una
+   migrazione per singolo cliente senza interrogare il database file per file.
+
+Il tenant si ricava dal **sito del media**, non dal contesto della richiesta: le conversioni
+girano in coda, dove il contesto non c'è.
+
+| Dove | Collezione |
+|---|---|
+| `Site` | `libreria` — il magazzino del sito |
+| `Post` | `copertina` (`singleFile`) |
+| `Page` | `immagini` — i blocchi galleria |
+
+Conversioni `anteprima` (320px) e `web` (max 1600px), entrambe `nonQueued` perché il worker
+daemon qui non gira (vedi Coda di build).
+
+Il disco è `media` in `config/filesystems.php`. Per passare a Cloudflare R2 in produzione
+basta cambiare `MEDIA_DISK`: i percorsi non dipendono dal driver.
+
+L'`alt` sta nelle `custom_properties` del **file**, non sulla pagina che lo usa: segue
+l'immagine ovunque venga riusata. La lista in `/admin` segnala in giallo i file che ne sono
+privi.
+
+`php artisan slimcms:media-orfani` trova i file rimasti sul disco senza riga nel database —
+succede dopo ogni `php artisan test`, che azzera il DB ma non il disco. Di default elenca
+soltanto; `--elimina` cancella davvero.
+
 ## Coda di build
 
 Quando un contenuto pubblicato cambia, un observer accoda una rigenerazione in

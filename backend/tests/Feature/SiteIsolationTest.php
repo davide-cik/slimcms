@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Media;
 use App\Models\Page;
 use App\Models\Plan;
 use App\Models\Site;
@@ -114,6 +115,49 @@ class SiteIsolationTest extends TestCase
 
         $this->siteB->useAsCurrent();
         $this->assertSame(1, Page::withTrashed()->count(), 'Il forceDelete su istanza ha superato il confine del sito.');
+    }
+
+    /**
+     * I media di Spatie sono il caso piu' insidioso: la sua tabella e' solo
+     * polimorfa e senza la colonna site_id che abbiamo aggiunto sarebbe
+     * completamente fuori dal global scope, con i file di un cliente
+     * elencabili da un altro.
+     */
+    public function test_i_media_di_un_sito_non_sono_visibili_da_un_altro(): void
+    {
+        $this->siteA->useAsCurrent();
+        $mediaA = $this->creaMedia($this->siteA, 'foto-di-a.jpg');
+
+        $this->siteB->useAsCurrent();
+        $this->creaMedia($this->siteB, 'riservato-di-b.jpg');
+
+        $this->siteA->useAsCurrent();
+        $this->assertSame(1, Media::count());
+        $this->assertSame('foto-di-a.jpg', Media::first()->file_name);
+        $this->assertFalse(
+            Media::where('file_name', 'riservato-di-b.jpg')->exists(),
+            'Il sito A vede un file del sito B: i media sono fuori dal global scope.'
+        );
+
+        $this->assertSame($this->siteA->id, $mediaA->site_id);
+    }
+
+    private function creaMedia(\App\Models\Site $site, string $fileName): Media
+    {
+        return Media::create([
+            'model_type' => $site->getMorphClass(),
+            'model_id' => $site->getKey(),
+            'collection_name' => 'libreria',
+            'name' => pathinfo($fileName, PATHINFO_FILENAME),
+            'file_name' => $fileName,
+            'mime_type' => 'image/jpeg',
+            'disk' => 'media',
+            'size' => 1024,
+            'manipulations' => [],
+            'custom_properties' => [],
+            'generated_conversions' => [],
+            'responsive_images' => [],
+        ]);
     }
 
     public function test_il_sito_e_scoped_per_tenant(): void

@@ -5,6 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Image\Enums\Fit;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
@@ -16,10 +20,11 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
  * sito (Page, Post, Media) sono a loro volta scoped per site_id: due
  * barriere indipendenti, difesa in profondita'.
  */
-class Site extends Model
+class Site extends Model implements HasMedia
 {
     use BelongsToTenant;
     use HasFactory;
+    use InteractsWithMedia;
 
     protected $fillable = [
         'tenant_id',
@@ -46,6 +51,32 @@ class Site extends Model
     public function getRouteKeyName(): string
     {
         return 'domain';
+    }
+
+    /**
+     * La libreria media appartiene al SITO, non alla singola pagina: un
+     * redattore carica una volta e riusa il file dove serve. E' anche il
+     * motivo per cui i file vivono sotto tenants/<id>/media/ e non sotto
+     * la pagina che per prima li ha usati.
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('libreria')
+            ->useDisk(config('media-library.disk_name'));
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        // Anteprima per la griglia del pannello: senza, il browser
+        // scaricherebbe l'originale a piena risoluzione per ogni miniatura.
+        $this->addMediaConversion('anteprima')
+            ->fit(Fit::Contain, 320, 320)
+            ->nonQueued();
+
+        // Formato per il web, usato dalle pagine pubbliche.
+        $this->addMediaConversion('web')
+            ->fit(Fit::Max, 1600, 1600)
+            ->nonQueued();
     }
 
     public function pages(): HasMany

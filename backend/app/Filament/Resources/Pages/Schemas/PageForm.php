@@ -7,6 +7,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -207,16 +208,15 @@ class PageForm
                     ->icon('heroicon-o-photo')
                     ->schema([
                         TextInput::make('titolo')->label('Titolo'),
-                        Repeater::make('immagini')
+                        SpatieMediaLibraryFileUpload::make('immagini')
                             ->label('Immagini')
-                            ->schema([
-                                TextInput::make('percorso')->label('Percorso file')->required(),
-                                TextInput::make('alt')
-                                    ->label('Testo alternativo')
-                                    ->required()
-                                    ->helperText('Descrive l\'immagine a chi non la vede. Obbligatorio.'),
-                            ])
-                            ->defaultItems(1),
+                            ->collection('immagini')
+                            ->multiple()
+                            ->reorderable()
+                            ->image()
+                            ->maxSize(8192)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Massimo 8 MB per immagine. Il testo alternativo si imposta dalla libreria media.'),
                     ]),
 
                 BlockBuilder\Block::make('cta')

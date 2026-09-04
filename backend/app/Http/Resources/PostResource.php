@@ -4,9 +4,12 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\Concerns\ConMedia;
 
 class PostResource extends JsonResource
 {
+    use ConMedia;
+
     public function toArray(Request $request): array
     {
         $seo = $this->seo ?? [];
@@ -16,7 +19,9 @@ class PostResource extends JsonResource
             'title' => $this->title,
             'slug' => $this->slug,
             'excerpt' => $this->excerpt ?? ($seo['meta_description'] ?? null),
-            'featured_image' => $this->featured_image_path,
+            // La copertina viene dalla libreria media, non da una stringa:
+            // cosi' il frontend riceve anche alt e varianti gia' pronte.
+            'featured_image' => $this->mediaPubblico($this->getFirstMedia('copertina')),
             'status' => $this->status,
             'published_at' => $this->publish_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
@@ -35,7 +40,7 @@ class PostResource extends JsonResource
                 'noindex' => (bool) ($seo['noindex'] ?? false),
                 'og_title' => $seo['og_title'] ?? $seo['meta_title'] ?? $this->title,
                 'og_description' => $seo['og_description'] ?? $seo['meta_description'] ?? $this->excerpt,
-                'og_image' => $seo['og_image'] ?? $this->featured_image_path,
+                'og_image' => $seo['og_image'] ?? $this->getFirstMedia('copertina')?->getUrl('web'),
             ],
 
             'geo' => [

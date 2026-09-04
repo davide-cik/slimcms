@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\Concerns\ConMedia;
 
 /**
  * Forma JSON di una pagina, cosi' come la consuma il worker di build Astro.
@@ -14,6 +15,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class PageResource extends JsonResource
 {
+    use ConMedia;
+
     public function toArray(Request $request): array
     {
         $seo = $this->seo ?? [];
@@ -26,6 +29,12 @@ class PageResource extends JsonResource
             'published_at' => $this->publish_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
             'blocks' => $this->blocks ?? [],
+
+            // Le immagini della pagina, con alt e varianti. I blocchi galleria
+            // vi fanno riferimento per id.
+            'media' => $this->getMedia('immagini')
+                ->map(fn ($m) => $this->mediaPubblico($m))
+                ->values(),
 
             'seo' => [
                 'meta_title' => $seo['meta_title'] ?? $this->title,
