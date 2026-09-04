@@ -42,6 +42,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Guardia separata per il control plane: sessione e provider distinti
+        // da quelli dei redattori, cosi' un accesso non puo' attraversare i
+        // due piani nemmeno per errore di configurazione.
+        'manage' => [
+            'driver' => 'session',
+            'provider' => 'admin_users',
+        ],
     ],
 
     /*
@@ -65,6 +73,12 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        // Control plane: tabella e modello separati dai redattori.
+        'admin_users' => [
+            'driver' => 'eloquent',
+            'model' => \App\Models\AdminUser::class,
         ],
 
         // 'users' => [
