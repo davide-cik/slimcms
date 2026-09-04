@@ -70,9 +70,74 @@ php artisan view:cache
 
 [[ -L public/storage ]] || php artisan storage:link
 
+# --- Pubblicazione del front controller nel docroot del dominio -------------
+#
+# Hestia vuole che la document root di un dominio sia il suo public_html, e
+# v-change-web-domain-docroot accetta come target solo un ALTRO DOMINIO
+# registrato, non una cartella qualsiasi. Invece di combattere Hestia (o di
+# usare un symlink, che qui e' rischioso perche' Apache non dichiara
+# FollowSymLinks), pubblichiamo i file statici di Laravel dentro public_html e
+# ci mettiamo un index.php che carica l'applicazione da APP_DIR.
+#
+# Cosi' non serve nessun permesso di root e niente sopravvive-ai-rebuild da
+# ricordarsi: public_html e' contenuto utente, Hestia non lo tocca.
+if [[ -n "${SLIMCMS_DOCROOT_DOMINIO:-}" ]]; then
+  DOCROOT="/home/claudio/web/${SLIMCMS_DOCROOT_DOMINIO}/public_html"
+
+  if [[ -d "$DOCROOT" ]]; then
+    log "Pubblicazione del front controller in $DOCROOT"
+
+    # Gli asset di Filament e simili: si copiano, non si linkano.
+    rsync -a --exclude='index.php' --exclude='storage' \
+      "$APP_DIR/public/" "$DOCROOT/"
+
+    # index.php che punta all'applicazione fuori dal docroot. Il codice
+    # dell'app resta cosi' NON servibile via web, che e' il motivo per cui
+    # Laravel separa public/ dal resto.
+    #
+    # Heredoc QUOTATO ('PHP'): senza le virgolette bash interpreterebbe le
+    # variabili PHP come proprie. Il percorso si inietta dopo, con sed.
+    cat > "$DOCROOT/index.php" <<'PHP'
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+
+define('LARAVEL_START', microtime(true));
+
+// L'applicazione vive FUORI dal document root: qui c'e' solo il front
+// controller. Generato da scripts/deploy-backend.sh, non modificare a mano.
+$app_dir = '@@APP_DIR@@';
+
+if (file_exists($maintenance = $app_dir.'/storage/framework/maintenance.php')) {
+    require $maintenance;
+}
+
+require $app_dir.'/vendor/autoload.php';
+
+/** @var Application $app */
+$app = require_once $app_dir.'/bootstrap/app.php';
+
+$app->handleRequest(Request::capture());
+PHP
+
+    sed -i "s|@@APP_DIR@@|$APP_DIR|" "$DOCROOT/index.php"
+
+    # Il link a storage deve puntare allo storage dell'APP, non a uno locale.
+    rm -rf "$DOCROOT/storage"
+    ln -sfn "$APP_DIR/storage/app/public" "$DOCROOT/storage"
+
+    # La pagina segnaposto di Hestia, se c'e' ancora, coprirebbe index.php.
+    rm -f "$DOCROOT/index.html"
+
+    echo "    front controller -> $APP_DIR"
+  else
+    printf '\033[33mATTENZIONE\033[0m: %s non esiste, front controller non pubblicato.\n' "$DOCROOT"
+  fi
+fi
+
 log "Verifica"
 php artisan about --only=environment 2>/dev/null | head -6
 
 echo
-log "Fatto. Manca solo la config nginx (richiede root):"
-echo "     scripts/nginx/manage.slimcms.it.conf.template"
+log "Fatto."

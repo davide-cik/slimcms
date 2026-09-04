@@ -42,23 +42,32 @@ sudo /usr/local/hestia/bin/v-add-letsencrypt-domain claudio manage.slimcms.it
 > sudo /usr/local/hestia/bin/v-change-web-domain-ip claudio <dominio> 49.13.157.237 yes
 > ```
 
-Poi puntare la document root all'applicazione. **Non modificare a mano i file
-in `/home/claudio/conf/web/`**: Hestia li rigenera e le modifiche si perdono.
-C'è un comando nativo:
+Poi pubblicare il front controller. **Non serve root e non serve toccare la
+configurazione di Hestia**: `scripts/deploy-backend.sh` lo fa da solo se gli
+passi il dominio.
 
 ```bash
-sudo /usr/local/hestia/bin/v-change-web-domain-docroot \
-  claudio manage.slimcms.it slimcms-app public
+SLIMCMS_DOCROOT_DOMINIO=manage.slimcms.it scripts/deploy-backend.sh
 ```
 
-Questo imposta la docroot a `/home/claudio/web/slimcms-app/public` e sopravvive
-ai rebuild di Hestia.
+Mette in `public_html` i file statici di Laravel e un `index.php` che carica
+l'applicazione da `/home/claudio/web/slimcms-app`. Il codice dell'app resta
+fuori dal document root, che è il motivo per cui Laravel separa `public/` dal
+resto.
 
-> **Nota sull'architettura di Hestia su questo server:** nginx sta *davanti ad
-> Apache* e gli inoltra tutto ciò che non è un file statico (`proxy_pass` verso
-> `:8443`). PHP lo serve Apache, non PHP-FPM direttamente. `AllowOverride All`
-> è già attivo, quindi il `.htaccess` di Laravel funziona senza altre
-> modifiche.
+> **Perché non `v-change-web-domain-docroot`.** Accetta come target solo un
+> altro **dominio registrato**, non una cartella qualsiasi:
+> `Error: web domain slimcms-app doesn't exist`. E un symlink qui è rischioso,
+> perché Apache non dichiara `FollowSymLinks`.
+
+> **Se il dominio risponde 503:** Hestia crea un pool PHP-FPM per dominio, ma
+> il socket nasce solo al reload del servizio. Il sintomo nel log di Apache è
+> `failed to make connection to backend` con
+> `/run/php/php8.2-fpm-<dominio>.sock` inesistente. Rimedio:
+>
+> ```bash
+> sudo systemctl reload php8.2-fpm
+> ```
 
 ## 3. Applicazione
 
