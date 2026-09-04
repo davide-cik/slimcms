@@ -93,7 +93,16 @@ const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.slug ==
       </p>
     </footer>
 
-    <style>
+    <!--
+      is:global e' necessario, non una scorciatoia: queste classi sono il
+      sistema di design condiviso e vengono usate anche dal markup di
+      Blocchi.astro. Con lo scoping di default Astro compila i selettori con
+      [data-astro-cid-...] del SOLO componente che li dichiara, e tutto cio'
+      che rende un altro componente resta senza stile.
+      (Successo davvero: il 2026-09-04 il sito e' andato online mezzo nudo.)
+      Gli stili specifici di un singolo blocco restano scoped in Blocchi.astro.
+    -->
+    <style is:global>
       :root {
         --carta: #f4f4f1;
         --carta-alta: #fbfbf9;

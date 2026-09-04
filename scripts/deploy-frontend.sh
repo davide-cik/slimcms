@@ -61,6 +61,11 @@ for atteso in "${ATTESI[@]}"; do
   echo "    trovato: \"$atteso\""
 done
 
+# Una classe senza regole CSS non si vede da peso e contenuto: l'HTML resta
+# valido e i controlli sopra passano tutti. E' successo davvero.
+python3 "$REPO_ROOT/scripts/verifica-css.py" dist \
+  || errore "ci sono classi senza stile: la pagina verrebbe pubblicata rotta."
+
 [[ -s dist/sitemap.xml ]] || errore "dist/sitemap.xml assente o vuoto."
 grep -q "<loc>" dist/sitemap.xml || errore "sitemap.xml senza nessuna URL."
 echo "    sitemap.xml: $(grep -c '<loc>' dist/sitemap.xml) URL"
