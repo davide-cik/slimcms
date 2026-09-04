@@ -325,6 +325,17 @@ build accodate dal pannello mentre le stesse build lanciate a mano riuscivano, p
 shell interattiva ha nvm nel `PATH`. Lo script ora cerca la versione di nvm, verifica che
 sia almeno la 22 e si ferma con un messaggio esplicito se non lo è.
 
+**Le immagini dei contenuti diventano file del sito.** L'API le espone con URL
+assoluti verso il backend; lasciarli così significherebbe che ogni foto del sito
+pubblico viene servita da `manage.slimcms.it`, cioè che il sito statico torna a
+dipendere da Laravel per essere leggibile — l'opposto della §7. La build le scarica
+(`src/pages/media/[...percorso].ts`, stesso schema delle immagini Open Graph) e le
+deposita in `/media/<id>/<nome>`; `percorsoMedia()` in `src/lib/api.ts` è la sola
+funzione che decide quel percorso, così la rotta che scrive i file e le pagine che li
+citano non possono divergere. Il gate di deploy verifica che ogni immagine citata
+dall'HTML esista davvero in `dist/`: un download fallito lascerebbe una pagina valida,
+della sua brava dimensione, con dei riquadri rotti al posto delle foto.
+
 La sitemap è generata a ogni build dai dati dell'API, quindi si aggiorna da sola a ogni
 pubblicazione. Le URL portano **sempre lo slash finale**: Astro genera `<slug>/index.html`,
 quindi il server risponde 200 solo su quella forma e 301 sull'altra. Il gate di deploy

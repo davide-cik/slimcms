@@ -169,6 +169,84 @@ export async function immagineOpenGraph(slug: string): Promise<ArrayBuffer> {
   return risposta.arrayBuffer();
 }
 
+/**
+ * Un file media come lo consegna l'API, con l'url gia' risolto.
+ */
+export interface Media {
+  id: number;
+  url: string;
+  anteprima: string | null;
+  alt: string | null;
+  [chiave: string]: unknown;
+}
+
+export const eMedia = (v: unknown): v is Media =>
+  typeof v === 'object' && v !== null &&
+  typeof (v as Media).url === 'string' && typeof (v as Media).id === 'number';
+
+/**
+ * Il percorso con cui un file media vive sul dominio DEL SITO.
+ *
+ * L'API restituisce url assoluti verso il backend. Lasciarli cosi'
+ * significherebbe che ogni foto del sito pubblico viene servita da
+ * manage.slimcms.it: il sito statico tornerebbe a dipendere da Laravel per
+ * essere leggibile, che e' esattamente cio' che l'architettura evita
+ * (specifiche §7). I file si scaricano in build e si riscrivono qui.
+ *
+ * Deterministico e senza stato condiviso: la rotta che scarica i file e le
+ * pagine che li citano ricavano lo stesso percorso dalla stessa funzione.
+ */
+export function percorsoMedia(m: Media): string {
+  const nome = new URL(m.url).pathname.split('/').filter(Boolean).pop() ?? `${m.id}`;
+
+  return `/media/${m.id}/${nome}`;
+}
+
+/**
+ * Tutti i file media citati dalle pagine, con origine e destinazione.
+ *
+ * Si cammina l'intera struttura invece di guardare solo le chiavi note: un
+ * blocco nuovo che porta un'immagine non deve richiedere di ricordarsi di
+ * aggiornare anche questo elenco.
+ */
+export async function elencoMedia(): Promise<{ origine: string; percorso: string }[]> {
+  const trovati = new Map<string, { origine: string; percorso: string }>();
+
+  const cammina = (valore: unknown): void => {
+    if (eMedia(valore)) {
+      const percorso = percorsoMedia(valore);
+      trovati.set(percorso, { origine: valore.url, percorso });
+
+      return;
+    }
+
+    if (Array.isArray(valore)) {
+      valore.forEach(cammina);
+
+      return;
+    }
+
+    if (typeof valore === 'object' && valore !== null) {
+      Object.values(valore).forEach(cammina);
+    }
+  };
+
+  cammina(await elencoPagine());
+
+  return [...trovati.values()];
+}
+
+/** Scarica un file media dal backend, in byte. */
+export async function scaricaMedia(origine: string): Promise<ArrayBuffer> {
+  const risposta = await fetch(origine);
+
+  if (!risposta.ok) {
+    throw new Error(`Media non scaricabile: ${origine} ha risposto ${risposta.status}.`);
+  }
+
+  return risposta.arrayBuffer();
+}
+
 export async function elencoPagine(): Promise<Pagina[]> {
   const { data } = await chiama<{ data: Pagina[] }>('/pages');
   return data;

@@ -82,7 +82,12 @@ class PageForm
                         ->image()
                         ->maxSize(8192)
                         ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                        ->helperText('Carica qui le immagini, poi scegli quali mostrare nei singoli blocchi. Il testo alternativo si imposta dalla libreria media.'),
+                        // Su una pagina non ancora salvata non c'e' record a
+                        // cui allegare i file, e i blocchi mostrerebbero una
+                        // tendina vuota senza spiegazione.
+                        ->helperText(fn (?Page $record): string => $record === null
+                            ? 'Salva la pagina una prima volta: poi da qui carichi le immagini e i blocchi potranno sceglierle.'
+                            : 'Carica qui le immagini, poi scegli quali mostrare nei singoli blocchi. Il testo alternativo si imposta dalla libreria media.'),
 
                     self::blocchi(),
                 ])->columns(1),
@@ -250,7 +255,9 @@ class PageForm
                             ->label('Immagini')
                             ->multiple()
                             ->options(fn (?Page $record): array => self::immaginiDisponibili($record))
-                            ->helperText('Scelte fra quelle caricate in "Immagini della pagina". L\'ordine e\' quello in cui le selezioni.'),
+                            ->helperText(fn (?Page $record): string => self::immaginiDisponibili($record) === []
+                                ? 'Nessuna immagine sulla pagina: caricane in "Immagini della pagina" qui sopra.'
+                                : 'Scelte fra quelle caricate in "Immagini della pagina". L\'ordine e\' quello in cui le selezioni.'),
                     ]),
 
                 BlockBuilder\Block::make('cta')

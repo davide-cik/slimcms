@@ -130,6 +130,19 @@ for f in dist/_astro/*.css; do
 done
 echo "    font: di prima parte, tutti presenti"
 
+# Ogni immagine citata dall'HTML deve esistere in dist/. Le foto dei
+# contenuti si scaricano dal backend in fase di build e si depositano qui: se
+# un download fallisse, la pagina resterebbe valida e con la sua brava
+# dimensione, solo con dei riquadri rotti al posto delle immagini.
+mancanti=0
+while read -r rif; do
+  [[ -s "dist${rif}" ]] || { echo "    immagine mancante: ${rif}"; mancanti=$((mancanti + 1)); }
+done < <(grep -rhoE 'src="/(media|[a-z0-9_-]+\.(svg|png|jpg|webp))[^"]*"' dist --include='*.html' \
+         | sed -E 's/^src="//; s/"$//' | sort -u)
+
+(( mancanti == 0 )) || errore "$mancanti immagini referenziate non esistono in dist/."
+echo "    immagini: tutte presenti"
+
 [[ -s dist/sitemap.xml ]] || errore "dist/sitemap.xml assente o vuoto."
 grep -q "<loc>" dist/sitemap.xml || errore "sitemap.xml senza nessuna URL."
 echo "    sitemap.xml: $(grep -c '<loc>' dist/sitemap.xml) URL"

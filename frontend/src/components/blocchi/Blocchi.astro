@@ -1,5 +1,5 @@
 ---
-import type { Blocco } from '../../lib/api';
+import { eMedia, percorsoMedia, type Blocco, type Media } from '../../lib/api';
 
 interface Props {
   blocchi: Blocco[];
@@ -18,20 +18,14 @@ const colonneValide = Math.min(3, Math.max(1, Number(colonne) || 1));
  * Il tipo e i dati stanno su due livelli diversi, non appiattiti: leggerli
  * qui in un punto solo evita di ripetere `b.data?.x` in ogni ramo.
  */
-/**
- * Un'immagine risolta dall'API: i blocchi salvano un riferimento, il
- * PageResource lo sostituisce con url e alt prima di consegnarlo qui.
+/*
+ * I blocchi salvano un riferimento all'immagine; il PageResource lo
+ * sostituisce con url e alt prima di consegnarlo qui. L'url punta pero' al
+ * backend: `percorsoMedia` lo riscrive sul dominio del sito, dove la build
+ * ha gia' depositato il file.
  */
-interface Immagine {
-  url: string;
-  alt?: string | null;
-}
-
-const eImmagine = (v: unknown): v is Immagine =>
-  typeof v === 'object' && v !== null && typeof (v as Immagine).url === 'string';
-
-const immagini = (v: unknown): Immagine[] => (Array.isArray(v) ? v.filter(eImmagine) : []);
-const immagine = (v: unknown): Immagine | null => (eImmagine(v) ? v : null);
+const immagini = (v: unknown): Media[] => (Array.isArray(v) ? v.filter(eMedia) : []);
+const immagine = (v: unknown): Media | null => (eMedia(v) ? v : null);
 
 /**
  * Traduce l'indirizzo di una pagina video/mappa nel suo indirizzo
@@ -114,7 +108,7 @@ const elenco = blocchi.map((b) => ({
             {b.titolo && <h2>{b.titolo}</h2>}
             <div class="galleria">
               {immagini(b.media).map((i) => (
-                <img src={i.url} alt={i.alt ?? ''} loading="lazy" />
+                <img src={percorsoMedia(i)} alt={i.alt ?? ''} loading="lazy" />
               ))}
             </div>
           </section>
@@ -124,7 +118,7 @@ const elenco = blocchi.map((b) => ({
         const foto = immagine(b.media);
         return (
           <section class={`capacita accostato${b.posizione === 'destra' ? ' invertito' : ''}`}>
-            {foto && <img src={foto.url} alt={foto.alt ?? ''} loading="lazy" />}
+            {foto && <img src={percorsoMedia(foto)} alt={foto.alt ?? ''} loading="lazy" />}
             <div>
               {b.titolo && <h2>{b.titolo}</h2>}
               {b.corpo && <div class="corpo-ricco" set:html={String(b.corpo)} />}
@@ -171,7 +165,7 @@ const elenco = blocchi.map((b) => ({
             {b.titolo && <h2>{b.titolo}</h2>}
             <ul class="loghi">
               {immagini(b.media).map((i) => (
-                <li><img src={i.url} alt={i.alt ?? ''} loading="lazy" /></li>
+                <li><img src={percorsoMedia(i)} alt={i.alt ?? ''} loading="lazy" /></li>
               ))}
             </ul>
           </section>
