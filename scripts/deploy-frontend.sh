@@ -66,6 +66,24 @@ done
 python3 "$REPO_ROOT/scripts/verifica-css.py" dist \
   || errore "ci sono classi senza stile: la pagina verrebbe pubblicata rotta."
 
+# I font sono ospitati in proprio di proposito: caricarli da un terzo dominio
+# rimette una catena di tre richieste davanti al primo rendering, e su queste
+# pagine l'elemento LCP e' testo. E' anche una questione di privacy: servire
+# Google Fonts dal CDN invia l'IP dei visitatori a Google, cosa contestata in
+# UE. Se un riferimento esterno torna, e' una regressione.
+if grep -rqE 'fonts\.(googleapis|gstatic)\.com' dist/*.html dist/**/*.html 2>/dev/null; then
+  errore "l'HTML referenzia Google Fonts: i font devono essere di prima parte."
+fi
+
+for f in dist/_astro/*.css; do
+  [[ -f "$f" ]] || continue
+  grep -oE 'url\(/fonts/[a-z0-9-]+\.woff2\)' "$f" | tr -d '()' | sed 's|url/|/|' | sort -u |
+  while read -r rel; do
+    [[ -s "dist${rel}" ]] || errore "il CSS referenzia ${rel}, che non esiste in dist/."
+  done
+done
+echo "    font: di prima parte, tutti presenti"
+
 [[ -s dist/sitemap.xml ]] || errore "dist/sitemap.xml assente o vuoto."
 grep -q "<loc>" dist/sitemap.xml || errore "sitemap.xml senza nessuna URL."
 echo "    sitemap.xml: $(grep -c '<loc>' dist/sitemap.xml) URL"
