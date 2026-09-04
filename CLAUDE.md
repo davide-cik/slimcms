@@ -15,7 +15,7 @@ costruire, leggi la specifica; qui trovi il *come* e i vincoli non negoziabili.
 | Laravel | ^12.0 | **non** aggiornare a 13 senza prima aggiornare PHP |
 | Filament | ^5.0 | Livewire 4. MFA/TOTP nativa (`Auth\MultiFactor\App\AppAuthentication` + middleware `EnsureMultiFactorAuthenticationIsEnabled`): nessun package extra |
 | Multitenancy | `stancl/tenancy` ^3.10 | modello **single database** con scoping per colonna |
-| Database | MariaDB 10.6.23 **remota su `10.0.0.3`** | db `claudio_slimcms`, utente `claudio_slimcms`. NON è il MariaDB locale |
+| Database | MariaDB 10.6.23 **remota su `10.0.0.3`** | `claudio_slimcms` = sviluppo **e test**, `claudio_slimcms_prod` = produzione. NON è il MariaDB locale |
 | Queue / cache | Redis 6.0 (locale, attivo) | driver `database` accettabile solo in test |
 | Frontend | Astro 7.3.1, output `static` | Node 24.13. `hybrid` (citato nelle specifiche) e' stato RIMOSSO in Astro 7: `static` e' il default e fa la stessa cosa |
 | Auth API | Laravel Sanctum ^4 | token per il worker di build Astro |
@@ -24,8 +24,15 @@ Docker **non** è disponibile su questa macchina: tutto gira su servizi di siste
 
 Il database è **remoto** (`10.0.0.3`), non locale: sulla macchina di sviluppo gira anche una
 MariaDB locale che **non c'entra nulla** con il progetto — non puntarci mai. Redis invece è
-quello locale. L'utente DB ha `ALL PRIVILEGES` solo su `claudio_slimcms`.*: non può creare
-altri database, quindi il database di test va richiesto a chi amministra `10.0.0.3`.
+quello locale.
+
+I test girano su `claudio_slimcms`, lo stesso database dello sviluppo: `RefreshDatabase` lo
+**azzera** a ogni esecuzione. Non è un problema perché i seeder lo ricostruiscono per intero
+(`ContenutoHomeSlimcms` contiene il contenuto reale della home di slimcms.it), ma vuol dire
+che dopo ogni `php artisan test` va lanciato `php artisan db:seed`.
+
+Backup notturni alle 03:30 via cron: `scripts/backup-db.sh`, credenziali in
+`~/.slimcms/*.cnf` (fuori dal repo), rotazione 30 daily + 4 weekly + 2 monthly per database.
 
 ## Layout monorepo
 
@@ -47,7 +54,8 @@ Eseguire sempre da `backend/` (o `frontend/`), mai dalla radice.
 # disabilita pcntl_* e exec (restrizione dell'hosting). Usa il server built-in:
 php -S 127.0.0.1:8000 -t public public/index.php
 php artisan migrate                   # migrazioni
-php artisan test                      # suite completa (richiede il db claudio_slimcms_test)
+php artisan test                      # suite completa. ATTENZIONE: azzera claudio_slimcms
+                                      # (RefreshDatabase). Dopo: php artisan db:seed
 php artisan test --filter=TenantScope # il test di sicurezza multitenant (vedi sotto)
 php artisan queue:work --queue=builds,default
 php artisan horizon                   # dashboard code
@@ -176,6 +184,27 @@ Da rimuovere quando stancl sistemerà la cosa a monte.
   gioco solo in **scrittura** (pubblicazione → webhook → `BuildSitePagesJob` su coda Redis)
   e per le poche funzioni dinamiche: ricerca interna, form contatto.
 - **Astro non fa fetch a runtime** per il contenuto: lo riceve in fase di build.
+
+## Pubblicazione del frontend
+
+**Usa sempre `scripts/deploy-frontend.sh`.** Non lanciare `npm run build` seguito da
+`rsync` a mano.
+
+Il 2026-09-04 il sito è andato offline così: la build era dentro una pipe con `grep`
+(che maschera l'exit code), una riga "Completed" di vite è sembrata un successo, e il
+`rsync --delete` è girato in un comando separato senza verificare l'output. Astro si era
+comportato correttamente — exit 1 e nessun `index.html` — l'errore era nella procedura.
+
+Lo script tiene build, verifica e pubblicazione in un blocco solo, e `rsync --delete` non
+parte se anche una sola verifica fallisce: `index.html` presente e sopra una dimensione
+minima, frammenti di contenuto attesi realmente nell'HTML, sitemap con almeno una URL,
+e infine `HTTP 200` più controllo del contenuto sul sito pubblicato.
+
+`--dry-run` fa build e verifica senza pubblicare.
+
+Attenzione: `php artisan test` azzera il database **e i token API**. Dopo i test servono
+`php artisan db:seed` e un nuovo token per la build:
+`php artisan slimcms:build-token <email> --site=slimcms.it`.
 
 ## Contratto API fra Laravel e Astro
 
