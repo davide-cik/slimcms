@@ -5,7 +5,7 @@
 
 set -uo pipefail
 
-APP_DIR="${SLIMCMS_APP_DIR:-/home/claudio/web/slimcms-app}"
+APP_DIR="${SLIMCMS_APP_DIR:-/home/claudio/web/manage.slimcms.it/private/slimcms-app}"
 
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$*"; }
 ko()   { printf '  \033[31mMANCA\033[0m %s\n' "$*"; }

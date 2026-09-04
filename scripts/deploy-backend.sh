@@ -12,12 +12,22 @@
 set -Eeuo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_DIR="${SLIMCMS_APP_DIR:-/home/claudio/web/slimcms-app}"
+# L'applicazione vive nella cartella "private" del dominio, non in una cartella
+# qualsiasi sotto web/. Non e' una preferenza: il pool PHP-FPM che Hestia crea
+# per ogni dominio impone un open_basedir che consente solo
+#   <dominio>/public_html, <dominio>/private, <dominio>/public_shtml,
+#   ~/.composer, ~/tmp, /tmp e le directory di sistema.
+# Con l'app altrove, PHP non riesce nemmeno a leggere vendor/autoload.php e la
+# richiesta muore con "Operation not permitted". Da CLI invece funziona,
+# perche' open_basedir e' impostato sul pool FPM e non sul php.ini della CLI:
+# e' il motivo per cui il sintomo sembrava incoerente.
+DOCROOT_DOMINIO="${SLIMCMS_DOCROOT_DOMINIO:-manage.slimcms.it}"
+APP_DIR="${SLIMCMS_APP_DIR:-/home/claudio/web/$DOCROOT_DOMINIO/private/slimcms-app}"
 
 log() { printf '\033[1m==>\033[0m %s\n' "$*"; }
 errore() { printf '\033[31mERRORE:\033[0m %s\n' "$*" >&2; exit 1; }
 
-[[ -d "$APP_DIR" ]] || errore "$APP_DIR non esiste. Crearla come root e assegnarla a claudio."
+mkdir -p "$APP_DIR" 2>/dev/null || errore "impossibile creare $APP_DIR"
 [[ -w "$APP_DIR" ]] || errore "$APP_DIR non e' scrivibile: sudo chown claudio:claudio $APP_DIR"
 
 log "Sincronizzazione del codice"
@@ -81,8 +91,8 @@ php artisan view:cache
 #
 # Cosi' non serve nessun permesso di root e niente sopravvive-ai-rebuild da
 # ricordarsi: public_html e' contenuto utente, Hestia non lo tocca.
-if [[ -n "${SLIMCMS_DOCROOT_DOMINIO:-}" ]]; then
-  DOCROOT="/home/claudio/web/${SLIMCMS_DOCROOT_DOMINIO}/public_html"
+if [[ -n "$DOCROOT_DOMINIO" ]]; then
+  DOCROOT="/home/claudio/web/$DOCROOT_DOMINIO/public_html"
 
   if [[ -d "$DOCROOT" ]]; then
     log "Pubblicazione del front controller in $DOCROOT"
