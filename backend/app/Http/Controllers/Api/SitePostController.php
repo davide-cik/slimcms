@@ -20,13 +20,19 @@ class SitePostController extends Controller
     public function index(Request $request, Site $site): AnonymousResourceCollection
     {
         $articoli = Post::query()
-            ->with(['author', 'categories'])
+            ->with(['author', 'categories', 'tags'])
             ->when($request->boolean('published_only', true), fn ($q) => $q->pubblicati())
             ->when($request->filled('category'), fn ($q) => $q->whereHas(
                 'categories',
                 fn ($c) => $c->where('slug', $request->string('category'))
             ))
-            ->when($request->filled('tag'), fn ($q) => $q->whereJsonContains('tags', $request->string('tag')->toString()))
+            // Per slug come per le categorie: prima i tag erano stringhe in
+            // una colonna JSON e il filtro cercava il testo esatto, quindi
+            // "Performance" e "performance" erano due filtri diversi.
+            ->when($request->filled('tag'), fn ($q) => $q->whereHas(
+                'tags',
+                fn ($t) => $t->where('slug', $request->string('tag'))
+            ))
             ->orderByDesc('publish_at')
             ->paginate($request->integer('per_page', 20));
 
@@ -36,7 +42,7 @@ class SitePostController extends Controller
     public function show(Request $request, Site $site, string $slug): PostResource
     {
         $articolo = Post::query()
-            ->with(['author', 'categories'])
+            ->with(['author', 'categories', 'tags'])
             ->where('slug', $slug)
             ->when($request->boolean('published_only', true), fn ($q) => $q->pubblicati())
             ->firstOrFail();

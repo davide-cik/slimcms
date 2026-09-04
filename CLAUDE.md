@@ -232,6 +232,26 @@ privi.
 succede dopo ogni `php artisan test`, che azzera il DB ma non il disco. Di default elenca
 soltanto; `--elimina` cancella davvero.
 
+## Categorie e tag
+
+Sono **due modelli scoped per sito**, `Category` e `Tag`, entrambi con unicità su
+`(site_id, slug)`: "performance" è un tag ovvio e lo useranno molti clienti.
+
+I tag erano una colonna JSON di stringhe libere su `posts`. La colonna è stata
+**rimossa nella stessa migrazione** che ha creato la tabella, non lasciata lì: con
+entrambe, `$post->tags` risolve all'attributo e non alla relazione, `whenLoaded('tags')`
+restituisce silenziosamente niente, e l'API continua a servire il vecchio array mentre
+il pannello scrive la pivot. Due fonti per lo stesso dato sono lo stesso errore di
+`tipo`/`type`.
+
+La migrazione **trasferisce** le etichette esistenti (slugificate, deduplicate per sito)
+e la `down()` le riscrive nella colonna: una rollback che perde dati non è una rollback.
+Verificata nei due sensi su dati reali. Usa query grezze e prende il `site_id`
+dall'articolo, non dal contesto: in una migrazione il contesto tenant non c'è (regola 2).
+
+Il filtro `?tag=` dell'API cerca per **slug**: prima cercava la stringa esatta nel JSON,
+quindi "Performance" e "performance" erano due filtri diversi.
+
 ## Coda di build
 
 Quando un contenuto pubblicato cambia, un observer accoda una rigenerazione in

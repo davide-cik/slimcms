@@ -8,8 +8,10 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Plan;
 use App\Models\Site;
+use App\Models\Tag;
 use App\Models\Tenant;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
  * Primo sito pilota: slimcms.it servito dalla piattaforma stessa.
@@ -116,7 +118,6 @@ class SlimcmsPilotSeeder extends Seeder
                 'title' => 'Perche abbiamo lasciato WordPress',
                 'author_id' => $autore?->id,
                 'excerpt' => 'Venti siti da aggiornare, plugin che si rompono a turno, e nessun modo di sapere quale sara il prossimo. La storia di come siamo arrivati a scrivere SlimCMS.',
-                'tags' => ['wordpress', 'migrazione', 'performance'],
                 'status' => 'published',
                 'publish_at' => now()->subDay(),
                 'blocks' => [[
@@ -133,6 +134,15 @@ class SlimcmsPilotSeeder extends Seeder
         );
 
         $articolo->categories()->syncWithoutDetaching([$categoria->id]);
+
+        // I tag sono righe come le categorie, non stringhe nell'articolo.
+        $etichette = collect(['WordPress', 'Migrazione', 'Performance'])
+            ->map(fn (string $nome) => Tag::firstOrCreate(
+                ['slug' => Str::slug($nome)],
+                ['name' => $nome]
+            )->id);
+
+        $articolo->tags()->syncWithoutDetaching($etichette->all());
 
         Site::forgetCurrent();
 

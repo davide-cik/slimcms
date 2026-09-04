@@ -30,7 +30,10 @@ class PostResource extends JsonResource
             ]),
             'categories' => $this->whenLoaded('categories', fn () => $this->categories
                 ->map(fn ($c) => ['name' => $c->name, 'slug' => $c->slug])->values()),
-            'tags' => array_values($this->tags ?? []),
+            // Nome e slug, come le categorie: lo slug serve alla pagina
+            // d'archivio, il nome a mostrarlo.
+            'tags' => $this->whenLoaded('tags', fn () => $this->tags
+                ->map(fn ($t) => ['name' => $t->name, 'slug' => $t->slug])->values()),
             'blocks' => $this->blocks ?? [],
 
             'seo' => [

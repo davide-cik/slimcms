@@ -32,7 +32,6 @@ class Post extends Model implements HasMedia
         'slug',
         'excerpt',
         'featured_image_path',
-        'tags',
         'blocks',
         'seo',
         'status',
@@ -42,7 +41,6 @@ class Post extends Model implements HasMedia
     protected function casts(): array
     {
         return [
-            'tags' => 'array',
             'blocks' => 'array',
             'seo' => 'array',
             'publish_at' => 'datetime',
@@ -78,6 +76,17 @@ class Post extends Model implements HasMedia
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);
+    }
+
+    /**
+     * I tag erano una colonna JSON di stringhe. Se quella colonna tornasse,
+     * `$post->tags` risolverebbe all'attributo e non a questa relazione, e
+     * `whenLoaded('tags')` restituirebbe silenziosamente niente: la colonna
+     * e' stata rimossa nella stessa migrazione che ha creato la tabella.
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class);
     }
 
     /**

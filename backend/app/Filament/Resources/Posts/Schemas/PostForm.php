@@ -6,7 +6,6 @@ use App\Filament\Resources\Pages\Schemas\PageForm;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
-use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Tabs;
@@ -58,9 +57,26 @@ class PostForm
                             TextInput::make('slug')->label('Slug')->required(),
                         ]),
 
-                    TagsInput::make('tags')
+                    // Non piu' TagsInput su una colonna JSON: i tag sono
+                    // righe di questo sito, quindi si riusano fra articoli,
+                    // si rinominano in un colpo solo e hanno uno slug per la
+                    // pagina d'archivio.
+                    Select::make('tags')
                         ->label('Tag')
-                        ->helperText('Invio per confermare ogni tag.'),
+                        ->relationship('tags', 'name')
+                        ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->createOptionForm([
+                            TextInput::make('name')
+                                ->label('Nome')
+                                ->required()
+                                ->maxLength(60)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Str::slug((string) $state))),
+                            TextInput::make('slug')->label('Slug')->required()->maxLength(60),
+                        ])
+                        ->helperText('Scrivi per cercarne uno; se non c\'e\', lo crei da qui.'),
 
                     Select::make('author_id')
                         ->label('Autore')
