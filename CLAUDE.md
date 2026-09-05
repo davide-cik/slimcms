@@ -402,6 +402,51 @@ così passa sempre, anche togliendo il controllo dal middleware. Usare
 `Sanctum::actingAs($user, ['site:<id>'])`, e verificare che il test fallisca davvero
 rompendo il middleware.
 
+## Registro degli accessi ai pannelli
+
+Risponde a una domanda sola: qualcuno sta provando a entrare che non dovrebbe? Si legge da
+`/manage/accessi`, nel control plane.
+
+**Sta nel control plane e non nel pannello di un sito.** Un tentativo fallito non appartiene
+a nessun sito — l'email potrebbe non esistere affatto — e "chi prova a entrare nel CMS" e'
+una domanda di piattaforma. Per la stessa ragione `Accesso` e' in
+`TenantScopeTest::EXCLUDED_MODELS`, come `Impersonazione`.
+
+**Si aggancia agli eventi di autenticazione di Laravel** (`Login`, `Failed`, `Logout`,
+`Lockout`), non alle pagine di login dei pannelli. Gli eventi li emette il framework da
+qualunque percorso porti a un'autenticazione — il form di Filament, l'impersonazione dal
+control plane, un futuro accesso via API — mentre un aggancio nella pagina di login
+coprirebbe solo quella, e il buco non si vedrebbe finche' non serve.
+
+Un accesso aperto **impersonando** e' segnato come tale: senza la distinzione, una modifica
+dell'assistenza sembrerebbe fatta dal cliente. La sessione si legge dall'helper e non dalla
+richiesta iniettata, perche' il listener puo' girare dove una richiesta HTTP non c'e'.
+
+Il registro non deve mai impedire un accesso: un errore in scrittura si annota nel log
+dell'applicazione e basta. Si perde una riga di storico, non l'accesso.
+
+`slimcms:controlla-accessi` (cron, ogni quindici minuti) avvisa quando un **indirizzo** o
+una **email** superano otto tentativi falliti in un'ora, e pota le righe oltre i 180
+giorni. La soglia e' su una finestra breve e per singola chiave, non sul totale: dieci
+tentativi falliti in un mese sono persone che sbagliano la password, dieci in un'ora sono
+qualcuno che prova. Un avviso per chiave non si ripete prima di sei ore — un allarme che
+arriva ogni cinque minuti si impara a ignorare, ed e' peggio di nessun allarme.
+
+L'avviso e' una Mailable e non `Mail::raw`: un invio grezzo non e' osservabile con
+`Mail::fake()`, e un allarme che nessuno puo' verificare e' un allarme di cui non ci si puo'
+fidare.
+
+### Trappola: `actingAs` non emette `Login`
+
+La scorciatoia dei test imposta l'utente sulla guardia e **non** emette l'evento, quindi un
+test scritto con `actingAs` non prova niente di cio' che succede davvero. `RegistroAccessi`
+usa `auth()->attempt()` almeno una volta: e' l'unico test che dimostra che il listener sia
+davvero **agganciato** e non solo corretto. Togliendo `Event::listen` dal provider, senza
+quel test la suite resterebbe verde con un registro sempre vuoto.
+
+Nota collegata: `redirectGuestsTo` in `bootstrap/app.php` manda un ospite al login del
+pannello, perche' Laravel per difetto cerca una rotta chiamata `login` che qui non esiste.
+
 ## Statistiche di accesso
 
 Chi visita il sito, giorno per giorno, diviso in quattro: **persone**, **motori di

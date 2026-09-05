@@ -62,6 +62,11 @@ class TenantScopeTest extends TestCase
         \App\Models\BuildRequest::class, // lavoro di piattaforma, non contenuto:
                                     // i comandi in console devono vedere le build
                                     // di tutti i siti per eseguirle in ordine
+        \App\Models\Accesso::class, // registro degli accessi ai pannelli: un
+                                    // tentativo FALLITO non appartiene a nessun
+                                    // sito (l'email potrebbe non esistere), e la
+                                    // domanda "chi prova a entrare" e' di
+                                    // piattaforma. Come impersonazioni.
         \App\Models\User::class,    // TODO: da rivedere quando esistera' il pivot site_user.
                                     // Oggi passa solo perche' la tabella users e' ancora
                                     // quella di default e non ha site_id: esclusione NON progettata.

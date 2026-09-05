@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Listeners\RegistraAccessi;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Event;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\Site;
@@ -30,6 +36,17 @@ class AppServiceProvider extends ServiceProvider
         Page::observe(ContenutoObserver::class);
         Post::observe(ContenutoObserver::class);
         Site::observe(SiteObserver::class);
+
+        // Il registro degli accessi ai due pannelli. Sugli eventi del
+        // framework e non nelle pagine di login: gli eventi arrivano da
+        // qualunque percorso porti a un'autenticazione — il form di
+        // Filament, l'impersonazione dal control plane, un futuro accesso
+        // via API — mentre un aggancio nella pagina di login coprirebbe solo
+        // quella.
+        Event::listen(Login::class, [RegistraAccessi::class, 'riuscito']);
+        Event::listen(Failed::class, [RegistraAccessi::class, 'fallito']);
+        Event::listen(Logout::class, [RegistraAccessi::class, 'uscita']);
+        Event::listen(Lockout::class, [RegistraAccessi::class, 'bloccato']);
     }
 
     /**
