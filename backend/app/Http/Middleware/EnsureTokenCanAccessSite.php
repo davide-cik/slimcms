@@ -44,7 +44,7 @@ class EnsureTokenCanAccessSite
             abort(403, 'Questo token non e\' abilitato per il sito richiesto.');
         }
 
-        // Ordine obbligato, come in ResolveSiteFromDomain: prima si conosce il
+        // Ordine obbligato, come in RisolviSitoDaParametro: prima si conosce il
         // sito, poi si inizializza il tenant, poi si fissa il sito corrente.
         if ($site->tenant !== null) {
             tenancy()->initialize($site->tenant);

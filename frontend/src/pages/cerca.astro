@@ -1,0 +1,255 @@
+---
+import Base, { type Documento } from '../layouts/Base.astro';
+import { sito, type Sito } from '../lib/api';
+
+/**
+ * La ricerca interna del sito.
+ *
+ * Gira **nel browser** su `/ricerca-indice.json`, generato in build: nessuna
+ * chiamata all'API, quindi risultati istantanei, funzionante a backend fermo
+ * e senza una richiesta di rete per ogni tasto premuto. L'indice si
+ * riscrive a ogni pubblicazione, quindi non invecchia.
+ *
+ * La pagina non va indicizzata: una pagina di ricerca vuota, o peggio una
+ * con `?q=` di ogni tipo, e' contenuto sottile che i motori penalizzano.
+ */
+const s = (await sito()) as Sito;
+const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
+
+const documento: Documento = {
+  percorso: '/cerca/',
+  titolo: `Cerca nel sito — ${s.name}`,
+  descrizione: `Cerca fra le pagine e gli articoli di ${s.name}.`,
+  noindex: true,
+  og: '/og/sito.png',
+  jsonld: [],
+};
+---
+
+<Base documento={documento} dominio={dominio} sito={s}>
+  <section class="apertura">
+    <h1>Cerca nel sito</h1>
+
+    <form id="ricerca" role="search" novalidate>
+      <label class="etichetta-ricerca" for="q">Cosa cerchi</label>
+      <input
+        id="q"
+        name="q"
+        type="search"
+        autocomplete="off"
+        placeholder="Scrivi una parola…"
+        aria-describedby="ricerca-stato"
+      />
+    </form>
+
+    <p id="ricerca-stato" class="sommario" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="capacita">
+    <ul id="risultati" class="elenco-risultati"></ul>
+  </section>
+</Base>
+
+<script is:inline>
+  (function () {
+    var campo = document.getElementById('q');
+    var elenco = document.getElementById('risultati');
+    var stato = document.getElementById('ricerca-stato');
+    var modulo = document.getElementById('ricerca');
+    if (!campo || !elenco || !stato || !modulo) return;
+
+    // Senza JavaScript la pagina resta leggibile e il campo inerte: e' una
+    // funzione in piu', non una parte del contenuto.
+    modulo.addEventListener('submit', function (e) {
+      e.preventDefault();
+    });
+
+    var indice = null;
+    var caricamento = null;
+
+    function normalizza(t) {
+      // Accenti via: chi cerca "citta" deve trovare "città", e viceversa.
+      return (t || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function carica() {
+      if (caricamento) return caricamento;
+      caricamento = fetch('/ricerca-indice.json')
+        .then(function (r) {
+          if (!r.ok) throw new Error('indice non disponibile');
+          return r.json();
+        })
+        .then(function (d) {
+          indice = (d.voci || []).map(function (v) {
+            return {
+              voce: v,
+              titolo: normalizza(v.titolo),
+              corpo: normalizza((v.sommario || '') + ' ' + (v.testo || '')),
+            };
+          });
+          return indice;
+        });
+      return caricamento;
+    }
+
+    function evidenzia(testo, termine) {
+      var i = normalizza(testo).indexOf(termine);
+      if (i < 0) return (testo || '').slice(0, 160);
+      // Una finestra intorno alla parola trovata, non l'inizio del testo:
+      // vedere il contesto e' il motivo per cui si legge un estratto.
+      var da = Math.max(0, i - 60);
+      return (da > 0 ? '…' : '') + testo.slice(da, da + 160).trim() + '…';
+    }
+
+    function cerca(grezzo) {
+      var termine = normalizza(grezzo.trim());
+
+      if (termine.length < 2) {
+        elenco.innerHTML = '';
+        stato.textContent = termine.length === 0 ? '' : 'Servono almeno due caratteri.';
+        return;
+      }
+
+      carica()
+        .then(function (voci) {
+          var trovate = [];
+
+          for (var i = 0; i < voci.length; i++) {
+            var v = voci[i];
+            var nelTitolo = v.titolo.indexOf(termine) >= 0;
+            var nelCorpo = v.corpo.indexOf(termine) >= 0;
+            if (nelTitolo || nelCorpo) {
+              // Il titolo pesa piu' del corpo: chi cerca "contatti" vuole la
+              // pagina che si chiama cosi', non quella che la nomina.
+              trovate.push({ v: v, peso: nelTitolo ? 0 : 1 });
+            }
+          }
+
+          trovate.sort(function (a, b) {
+            return a.peso - b.peso;
+          });
+
+          if (trovate.length === 0) {
+            elenco.innerHTML = '';
+            stato.textContent = 'Nessun risultato per “' + grezzo.trim() + '”.';
+            return;
+          }
+
+          stato.textContent =
+            trovate.length === 1 ? '1 risultato.' : trovate.length + ' risultati.';
+
+          elenco.innerHTML = '';
+          trovate.slice(0, 30).forEach(function (t) {
+            var voce = t.v.voce;
+            var li = document.createElement('li');
+
+            var a = document.createElement('a');
+            a.href = voce.percorso;
+            a.textContent = voce.titolo;
+            li.appendChild(a);
+
+            if (voce.tipo === 'articolo') {
+              var tag = document.createElement('span');
+              tag.className = 'tipo';
+              tag.textContent = 'articolo';
+              li.appendChild(tag);
+            }
+
+            var estratto = voce.sommario || voce.testo;
+            if (estratto) {
+              var p = document.createElement('p');
+              // textContent e non innerHTML: il contenuto arriva dal
+              // pannello, e non deve poter diventare markup qui.
+              p.textContent = evidenzia(estratto, termine);
+              li.appendChild(p);
+            }
+
+            elenco.appendChild(li);
+          });
+        })
+        .catch(function () {
+          stato.textContent = 'La ricerca non è disponibile in questo momento.';
+        });
+    }
+
+    var attesa;
+    campo.addEventListener('input', function () {
+      clearTimeout(attesa);
+      var v = campo.value;
+      // Un filo di attesa: cercare a ogni tasto su un indice gia' in memoria
+      // e' gratis, ma ridisegnare la lista trenta volte al secondo no.
+      attesa = setTimeout(function () {
+        cerca(v);
+      }, 120);
+    });
+
+    // Arrivando da /cerca/?q=qualcosa la ricerca parte da sola.
+    var iniziale = new URLSearchParams(window.location.search).get('q');
+    if (iniziale) {
+      campo.value = iniziale;
+      cerca(iniziale);
+    }
+
+    campo.focus();
+  })();
+</script>
+
+<style>
+  .etichetta-ricerca {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  #q {
+    font: inherit;
+    font-size: 1.15rem;
+    width: 100%;
+    max-width: 34rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    background: #fff;
+    color: inherit;
+  }
+
+  .elenco-risultati {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .elenco-risultati li {
+    padding: 0.9rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .elenco-risultati a {
+    font-family: var(--display);
+    font-size: 1.15rem;
+    color: var(--segnale);
+    text-decoration: none;
+  }
+
+  .elenco-risultati a:hover {
+    text-decoration: underline;
+  }
+
+  .elenco-risultati p {
+    margin: 0.3rem 0 0;
+    opacity: 0.8;
+    font-size: 0.95rem;
+  }
+
+  .tipo {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+  }
+</style>

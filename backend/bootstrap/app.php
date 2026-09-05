@@ -12,9 +12,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // CORS solo su api/public/* (vedi config/cors.php). Laravel 12 non
+        // registra HandleCors da solo: senza, il browser del visitatore
+        // scarta la risposta e il form di contatto non parte da nessun sito,
+        // perche' il sito statico e l'API stanno su domini diversi.
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+
         $middleware->alias([
-            // Risolve il sito dall'Host: per gli endpoint pubblici a runtime.
-            'site.domain' => \App\Http\Middleware\ResolveSiteFromDomain::class,
+            // Risolve il sito dal dominio nella URL: per gli endpoint
+            // pubblici chiamati dal browser del visitatore.
+            'site.parametro' => \App\Http\Middleware\RisolviSitoDaParametro::class,
             // Verifica che il token Sanctum sia abilitato per il sito in URL:
             // per gli endpoint letti dal worker di build.
             'site.token' => \App\Http\Middleware\EnsureTokenCanAccessSite::class,

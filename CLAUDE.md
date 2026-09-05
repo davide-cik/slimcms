@@ -263,6 +263,66 @@ anche nella **chiave di cache** del backend — senza, due contenuti omonimi agg
 stesso secondo si scambiavano l'immagine. Il gate di deploy verifica ogni `og:image`, che
 non compare come `src=` e sfuggiva al controllo delle immagini.
 
+## Ricerca e modulo di contatto
+
+Sono le due funzioni che le specifiche (§7.3) chiamano "dinamiche". Sono finite in due
+posti diversi, e non per capriccio.
+
+### La ricerca gira nel browser
+
+`/ricerca-indice.json` si genera in build come la sitemap, e la pagina `/cerca/` lo filtra
+lato client. Nessuna chiamata all'API: e' la §7 applicata alla lettera — il sito pubblico
+non tocca Laravel per leggere. In cambio i risultati sono istantanei, funzionano a backend
+fermo, non consumano rate limit e non fanno una richiesta di rete per ogni tasto premuto.
+L'indice non invecchia: ogni pubblicazione accoda una build e la build lo riscrive.
+
+Il testo indicizzato e' troncato a 1200 caratteri per documento: senza un tetto, dieci
+pagine lunghe diventano un file da centinaia di kilobyte che ogni visitatore scarica per
+cercare una parola. La normalizzazione toglie gli accenti nei due sensi ("citta" trova
+"città"), e il titolo pesa piu' del corpo — chi cerca "contatti" vuole la pagina che si
+chiama cosi', non quella che la nomina.
+
+`GET /api/public/{sito}/search` resta e **Astro non lo usa**: serve a un sito abbastanza
+grande da rendere l'indice troppo pesante da scaricare. Cerca su pagine **e** articoli:
+una ricerca che su un sito col blog non trova gli articoli e' una ricerca che mente.
+
+La pagina `/cerca/` e' `noindex` (una pagina di ricerca vuota e' contenuto sottile) e non
+sta nel menu: la voce la aggiunge il cliente dal pannello, come qualsiasi altra. Dalla
+pagina 404 ci si arriva, perche' chi si e' perso e' esattamente chi ha bisogno di cercare.
+
+### Il contatto e' l'unica cosa che scrive
+
+Blocco `modulo_contatto` del page builder, quindi il cliente lo mette dove vuole. Il
+browser chiama `POST /api/public/{sito}/contact`.
+
+**Il sito sta nella URL, non nell'Host.** Il sito statico vive su `<dominio-cliente>` e
+l'API su `manage.slimcms.it`: la chiamata e' per forza cross-origin, e l'Host che arriva
+all'API e' sempre quello dell'API. Con la risoluzione dall'Host — come era scritto prima —
+questi endpoint rispondevano **404 a chiunque**, ed e' il motivo per cui non li usava
+nessuno. Servirli dal dominio del cliente richiederebbe un proxy Apache, e qui
+`mod_proxy_http` non e' abilitato (serve root).
+
+Da cui anche il CORS, in `config/cors.php`, limitato a `api/public/*`: il resto dell'API
+non risponde a nessuna origine. L'origine e' aperta di proposito — non viaggiano ne' cookie
+ne' token, e mandare un messaggio dal form e' comunque una cosa che chiunque puo' fare con
+`curl`. La difesa e' il rate limiting e l'esca, non un elenco di origini che darebbe
+l'impressione di una difesa che non c'e'.
+
+**Il messaggio va in tabella PRIMA della mail.** Un form che risponde "messaggio ricevuto"
+e si affida solo all'invio e' un modo per perdere richieste commerciali senza accorgersene:
+mailer non configurato, casella piena, destinatario sbagliato. Con la riga in `messaggi`,
+la cosa peggiore che puo' succedere e' che il titolare lo scopra dal pannello invece che
+dalla posta. Il destinatario e' `sites.contact_email`, e se e' vuoto non parte niente ma il
+messaggio si salva lo stesso.
+
+Nell'email il mittente **non** e' l'indirizzo del visitatore: una mail che dichiara un
+mittente di un dominio che non e' il nostro viene scartata da SPF e DKIM. Il visitatore sta
+nel `Reply-To`, che fa funzionare "Rispondi".
+
+L'esca (honeypot) risponde **200, identico a un invio riuscito**, e non salva. Prima era
+una regola di validazione `max:0` che rispondeva 422 mentre il commento accanto prometteva
+il contrario: il controllo insegnava al bot esattamente quale campo togliere.
+
 ## Favicon
 
 Ogni sito pubblica `/favicon.ico` — un ICO vero con dentro 16, 32 e 48 — e, quando l'icona

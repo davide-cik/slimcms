@@ -407,6 +407,22 @@ class PageForm
                         Textarea::make('orari')->label('Orari')->rows(2)->columnSpanFull(),
                     ])->columns(2),
 
+                BlockBuilder\Block::make('modulo_contatto')
+                    ->label('Modulo di contatto')
+                    ->icon('heroicon-o-envelope')
+                    ->schema([
+                        TextInput::make('titolo')->label('Titolo')->placeholder('Scrivici'),
+                        TextInput::make('etichetta')->label('Testo del pulsante')
+                            ->placeholder('Invia il messaggio')->maxLength(40),
+                        Textarea::make('testo')->label('Testo introduttivo')->rows(2)->columnSpanFull(),
+                        TextInput::make('conferma')
+                            ->label('Messaggio di conferma')
+                            ->placeholder('Grazie, ti rispondiamo al piu\' presto.')
+                            ->maxLength(160)
+                            ->columnSpanFull()
+                            ->helperText('Quello che il visitatore legge dopo l\'invio.'),
+                    ])->columns(2),
+
                 BlockBuilder\Block::make('separatore')
                     ->label('Separatore')
                     ->icon('heroicon-o-minus')

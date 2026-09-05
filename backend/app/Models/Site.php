@@ -32,6 +32,7 @@ class Site extends Model implements HasMedia
         'domain',
         'name',
         'logo_path',
+        'contact_email',
         'favicon_path',
         'favicon_initials',
         'og_config',

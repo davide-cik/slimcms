@@ -1,5 +1,6 @@
 ---
 import { eMedia, percorsoMedia, type Blocco, type Media } from '../../lib/api';
+import ModuloContatto from './ModuloContatto.astro';
 
 interface Props {
   blocchi: Blocco[];
@@ -202,6 +203,16 @@ const elenco = blocchi.map((b) => ({
               {b.orari && <li>{b.orari}</li>}
             </ul>
           </section>
+        );
+
+      case 'modulo_contatto':
+        return (
+          <ModuloContatto
+            titolo={b.titolo ? String(b.titolo) : undefined}
+            testo={b.testo ? String(b.testo) : undefined}
+            etichetta={b.etichetta ? String(b.etichetta) : undefined}
+            conferma={b.conferma ? String(b.conferma) : undefined}
+          />
         );
 
       case 'separatore':

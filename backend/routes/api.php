@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Route;
 |    (EnsureTokenCanAccessSite). Il sito arriva dalla URL.
 |
 | 2. /api/public/...        -> invocati a runtime dal BROWSER del visitatore.
-|    Nessun token: il sito si risolve dall'Host (ResolveSiteFromDomain).
+|    Nessun token: il sito sta nella URL (RisolviSitoDaParametro).
 |    Rate limited, perche' su un endpoint pubblico e' l'unica difesa.
 |
 */
@@ -63,8 +63,13 @@ Route::prefix('sites/{site}')
 Route::get('routing-map', fn (MappaRouting $mappa) => response()->json(json_decode($mappa->json(), true)))
     ->middleware(['auth:sanctum', 'abilities:sites:*']);
 
-Route::prefix('public')
-    ->middleware(['site.domain', 'throttle:60,1'])
+// Il sito sta nella URL, non nell'Host: la chiamata parte dal browser di un
+// visitatore che sta su <dominio-cliente>, mentre l'API risponde su
+// manage.slimcms.it. E' cross-origin, quindi l'Host qui e' sempre quello
+// dell'API. Con la risoluzione dall'Host questi endpoint rispondevano 404 a
+// chiunque. Vedi RisolviSitoDaParametro.
+Route::prefix('public/{sito}')
+    ->middleware(['site.parametro', 'throttle:60,1'])
     ->group(function () {
         Route::get('search', [PublicSiteController::class, 'search']);
         Route::post('contact', [PublicSiteController::class, 'contact'])

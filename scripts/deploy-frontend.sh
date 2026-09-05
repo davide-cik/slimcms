@@ -165,6 +165,25 @@ echo "    open graph: tutte le anteprime presenti"
 
 echo "    immagini: tutte presenti"
 
+# La ricerca gira nel browser su questo file: se manca, il campo di ricerca
+# c'e' e non trova mai niente — un guasto che si vede solo provando a cercare.
+[[ -s dist/ricerca-indice.json ]] || errore "dist/ricerca-indice.json assente: la ricerca del sito non funzionerebbe."
+grep -q '"voci"' dist/ricerca-indice.json \
+  || errore "dist/ricerca-indice.json senza voci: risposta incompleta dall'API."
+[[ -s dist/cerca/index.html ]] || errore "dist/cerca/index.html assente."
+echo "    ricerca: indice con $(python3 -c "import json;print(len(json.load(open('dist/ricerca-indice.json'))['voci']))") voci"
+
+# Il modulo di contatto porta l'indirizzo dell'API in un attributo: se fosse
+# vuoto o relativo, ogni messaggio scritto da un visitatore andrebbe perso in
+# silenzio, che e' il modo peggiore di rompersi.
+if grep -rql 'class="modulo"' dist --include='*.html'; then
+  while read -r endpoint; do
+    [[ "$endpoint" =~ ^https://.+/public/.+/contact$ ]] \
+      || errore "modulo di contatto con endpoint non valido: '$endpoint'"
+  done < <(grep -rhoE 'data-endpoint="[^"]*"' dist --include='*.html' | sed -E 's/data-endpoint="//; s/"$//' | sort -u)
+  echo "    modulo di contatto: endpoint verificato"
+fi
+
 # /favicon.ico non compare in nessun href dell'HTML per volere del browser:
 # lo chiede da solo alla radice del dominio, e con lui ogni crawler. Se manca
 # il sito risponde 404 a ogni visita, il che e' esattamente il primo 404 che

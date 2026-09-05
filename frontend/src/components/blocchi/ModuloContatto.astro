@@ -1,0 +1,261 @@
+---
+/**
+ * Il modulo di contatto: l'unica parte del sito pubblico che scrive.
+ *
+ * Il resto del sito e' statico e non tocca il backend (sezione 7 delle
+ * specifiche). Qui si': il messaggio deve arrivare da qualche parte. La
+ * chiamata parte dal browser del visitatore verso l'API, che sta su un altro
+ * dominio — da cui il CORS lato Laravel e il dominio del sito dentro la URL,
+ * perche' l'Host che arriva all'API e' sempre quello dell'API.
+ *
+ * L'indirizzo dell'endpoint si calcola **qui nel frontmatter**, cioe' in fase
+ * di build, e viaggia come attributo. `src/lib/api.ts` non va importato da
+ * codice che gira nel browser: porta il token di build.
+ */
+interface Props {
+  titolo?: string;
+  testo?: string;
+  etichetta?: string;
+  conferma?: string;
+}
+
+const { titolo, testo, etichetta, conferma } = Astro.props;
+
+const base = (import.meta.env.SLIMCMS_API_URL ?? '').replace(/\/$/, '');
+const sito = import.meta.env.SLIMCMS_SITE ?? '';
+
+if (!base || !sito) {
+  throw new Error(
+    'Modulo di contatto: SLIMCMS_API_URL o SLIMCMS_SITE non impostati. ' +
+      'Senza, il modulo verrebbe pubblicato con un indirizzo vuoto e ogni ' +
+      'messaggio andrebbe perso in silenzio.'
+  );
+}
+
+const endpoint = `${base}/public/${sito}/contact`;
+
+// Gli id devono essere unici: una pagina puo' avere due moduli, e due
+// `for="mc-nome"` fanno puntare la seconda etichetta al primo campo.
+const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<section class="modulo-contatto">
+  {titolo && <h2>{titolo}</h2>}
+  {testo && <p class="modulo-intro">{testo}</p>}
+
+  <form
+    class="modulo"
+    data-endpoint={endpoint}
+    data-conferma={conferma || 'Grazie, ti rispondiamo al più presto.'}
+    novalidate
+  >
+    <div class="campo">
+      <label for={`${uid}-nome`}>Nome</label>
+      <input id={`${uid}-nome`} name="name" type="text" required maxlength="120" autocomplete="name" />
+    </div>
+
+    <div class="campo">
+      <label for={`${uid}-email`}>Email</label>
+      <input id={`${uid}-email`} name="email" type="email" required maxlength="180" autocomplete="email" />
+    </div>
+
+    <div class="campo">
+      <label for={`${uid}-messaggio`}>Messaggio</label>
+      <textarea id={`${uid}-messaggio`} name="message" required maxlength="5000" rows="6"></textarea>
+    </div>
+
+    {/*
+      Trappola per i bot: un campo che un umano non vede e non compila mai.
+      Nascosto con CSS e non con `type=hidden`, che i bot riconoscono; fuori
+      dall'ordine di tabulazione e ignorato dai lettori di schermo, cosi' non
+      da' fastidio a chi naviga da tastiera.
+    */}
+    <div class="esca" aria-hidden="true">
+      <label for={`${uid}-website`}>Non compilare</label>
+      <input id={`${uid}-website`} name="website" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <button type="submit">{etichetta || 'Invia il messaggio'}</button>
+
+    <p class="modulo-esito" role="status" aria-live="polite"></p>
+  </form>
+</section>
+
+<script is:inline>
+  (function () {
+    // Tutti i moduli della pagina, non uno solo: il blocco si puo' mettere
+    // due volte, e con un id fisso il secondo non funzionerebbe.
+    var moduli = document.querySelectorAll('form.modulo[data-endpoint]');
+
+    Array.prototype.forEach.call(moduli, function (modulo) {
+    if (modulo.dataset.legato === '1') return;
+    modulo.dataset.legato = '1';
+
+    var esito = modulo.querySelector('.modulo-esito');
+    var pulsante = modulo.querySelector('button[type=submit]');
+    var etichettaOriginale = pulsante ? pulsante.textContent : '';
+
+    function messaggio(testo, tipo) {
+      if (!esito) return;
+      esito.textContent = testo;
+      esito.className = 'modulo-esito ' + tipo;
+    }
+
+    modulo.addEventListener('submit', function (evento) {
+      evento.preventDefault();
+
+      // La validazione del browser resta la prima linea: `novalidate` toglie
+      // solo i messaggi automatici, non i vincoli.
+      if (!modulo.checkValidity()) {
+        messaggio('Controlla i campi obbligatori.', 'errore');
+        modulo.reportValidity();
+        return;
+      }
+
+      var dati = new FormData(modulo);
+      dati.append('page', window.location.pathname);
+
+      if (pulsante) {
+        pulsante.disabled = true;
+        pulsante.textContent = 'Invio…';
+      }
+      messaggio('', '');
+
+      fetch(modulo.dataset.endpoint, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: dati,
+      })
+        .then(function (r) {
+          return r.json().then(function (corpo) {
+            return { ok: r.ok, stato: r.status, corpo: corpo };
+          });
+        })
+        .then(function (r) {
+          if (r.ok) {
+            modulo.reset();
+            messaggio(modulo.dataset.conferma, 'ok');
+            return;
+          }
+
+          // 422: la validazione del server. 429: troppi invii ravvicinati.
+          // Dire quale dei due e' successo evita che chi ha scritto davvero
+          // riprovi a vuoto.
+          if (r.stato === 429) {
+            messaggio('Hai già inviato un messaggio poco fa. Riprova fra un minuto.', 'errore');
+            return;
+          }
+
+          var errori = r.corpo && r.corpo.errors ? Object.values(r.corpo.errors)[0] : null;
+          messaggio(
+            errori && errori[0] ? errori[0] : 'Non è stato possibile inviare il messaggio.',
+            'errore'
+          );
+        })
+        .catch(function () {
+          messaggio(
+            'Non è stato possibile inviare il messaggio. Controlla la connessione e riprova.',
+            'errore'
+          );
+        })
+        .finally(function () {
+          if (pulsante) {
+            pulsante.disabled = false;
+            pulsante.textContent = etichettaOriginale;
+          }
+        });
+    });
+    });
+  })();
+</script>
+
+<style>
+  .modulo-contatto {
+    max-width: 34rem;
+  }
+
+  .modulo-intro {
+    margin-bottom: 1.5rem;
+  }
+
+  .campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+  }
+
+  .campo label {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .campo input,
+  .campo textarea {
+    font: inherit;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    background: #fff;
+    color: inherit;
+  }
+
+  .campo textarea {
+    resize: vertical;
+  }
+
+  .campo input:focus-visible,
+  .campo textarea:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
+  }
+
+  /* L'esca non deve essere raggiungibile ne' visibile, ma deve restare nel
+     DOM: `display:none` la fa saltare a qualche bot. */
+  .esca {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .modulo-contatto button {
+    font: inherit;
+    font-weight: 600;
+    padding: 0.65rem 1.4rem;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .modulo-contatto button:hover:not([disabled]) {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .modulo-contatto button[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  .modulo-esito:empty {
+    display: none;
+  }
+
+  .modulo-esito {
+    margin-top: 1rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+
+  .modulo-esito.ok {
+    background: rgba(15, 107, 74, 0.12);
+  }
+
+  .modulo-esito.errore {
+    background: rgba(160, 30, 30, 0.12);
+  }
+</style>

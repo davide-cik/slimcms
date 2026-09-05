@@ -34,6 +34,17 @@ class ImpostazioniSito extends EditTenantProfile
     public function form(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make('Modulo di contatto')
+                ->description('Dove arrivano i messaggi scritti dai visitatori.')
+                ->schema([
+                    TextInput::make('contact_email')
+                        ->label('Email del destinatario')
+                        ->email()
+                        ->maxLength(180)
+                        ->helperText('I messaggi restano comunque nel pannello, sotto "Messaggi": '
+                            . 'questa e\' solo la notifica. Se la lasci vuota non parte nessuna email.'),
+                ]),
+
             Section::make('Favicon')
                 ->description('L\'icona che compare nella scheda del browser e fra i preferiti.')
                 ->schema([
