@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Pages\Schemas;
 
 use App\Support\RuoloCorrente;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\Builder as BlockBuilder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
@@ -112,8 +113,18 @@ class PageForm
                         // Filament rifiuta comunque un'opzione disabilitata
                         // che arrivi dal browser, e il modello la rifiuta
                         // un'altra volta (PubblicazioneRiservata).
-                        ->disableOptionWhen(fn (string $value): bool => $value !== 'draft'
-                            && ! RuoloCorrente::puoPubblicare())
+                        ->disableOptionWhen(function (string $value, ?Model $record): bool {
+                            if (RuoloCorrente::puoPubblicare()) {
+                                return false;
+                            }
+
+                            // Chi non puo' pubblicare puo' solo lasciare le
+                            // cose come stanno. Non basta tenere "Bozza"
+                            // sempre aperta: su un contenuto gia' online
+                            // sarebbe il pulsante per ritirarlo dal sito,
+                            // che e' lo stesso potere al contrario.
+                            return $value !== ($record?->status ?? 'draft');
+                        })
                         ->helperText(fn (): ?string => RuoloCorrente::puoPubblicare()
                             ? null
                             : 'Il tuo ruolo su questo sito non consente di pubblicare: salva come bozza, un redattore la mettera\' online.')

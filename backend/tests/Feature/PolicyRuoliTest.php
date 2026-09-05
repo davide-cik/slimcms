@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Enums\Ruolo;
 use App\Filament\Resources\Pages\Pages\CreatePage;
 use App\Filament\Resources\Pages\Pages\EditPage;
+use App\Filament\Resources\Posts\Pages\CreatePost;
+use App\Filament\Resources\Posts\Schemas\PostForm;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\Page;
@@ -14,6 +16,9 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Support\RuoloCorrente;
 use Filament\Facades\Filament;
+use Filament\Pages\Tenancy\EditTenantProfile;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Schema;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
@@ -129,6 +134,42 @@ class PolicyRuoliTest extends TestCase
 
         $this->assertSame([], $mancanti, "Abilita' mancanti (che Filament tratta come consentite):\n"
             . implode("\n", $mancanti));
+    }
+
+    /**
+     * Le pagine del pannello non hanno un modello, quindi non hanno una
+     * policy: l'autorizzazione se la devono dichiarare da sole.
+     *
+     * Il contratto sulle risorse qui sopra non le vede, ed e' esattamente il
+     * posto dove un giorno comparira' una schermata di impostazioni aperta a
+     * chiunque abbia accesso al pannello.
+     */
+    public function test_ogni_pagina_del_pannello_dichiara_chi_puo_aprirla(): void
+    {
+        $senza = [];
+
+        foreach (glob(app_path('Filament/Pages/{*.php,*/*.php}'), GLOB_BRACE) as $file) {
+            $classe = 'App\\Filament\\Pages\\'
+                . str_replace('/', '\\', substr($file, strlen(app_path('Filament/Pages/')), -4));
+
+            // Le pagine del profilo del tenant autorizzano in `mount()`
+            // chiedendo `update` sul sito, cioe' passano da SitePolicy.
+            if (is_subclass_of($classe, EditTenantProfile::class)) {
+                continue;
+            }
+
+            $dichiarata = method_exists($classe, 'canAccess')
+                && ! str_starts_with(
+                    (new \ReflectionMethod($classe, 'canAccess'))->getDeclaringClass()->getName(),
+                    'Filament\\'
+                );
+
+            if (! $dichiarata) {
+                $senza[] = class_basename($classe);
+            }
+        }
+
+        $this->assertSame([], $senza, "Pagine del pannello senza controllo d'accesso:\n" . implode("\n", $senza));
     }
 
     // ---------------------------------------------------- gestione dei redattori
@@ -275,6 +316,89 @@ class PolicyRuoliTest extends TestCase
 
         $this->assertSame('Servizi e consulenza', $pagina->fresh()->title);
         $this->assertSame('published', $pagina->fresh()->status);
+    }
+
+    /**
+     * Ritirare dal sito e' lo stesso potere al contrario.
+     *
+     * Guardando solo il valore nuovo, portare a bozza una pagina pubblicata
+     * passava indisturbato. Sulla home e' peggio che cancellarla: `deleting`
+     * impedisce di cancellarla, niente impediva di ritirarla, e senza home
+     * la build fallisce.
+     */
+    public function test_un_autore_non_puo_ritirare_dal_sito(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+        $pagina = Page::create(['title' => 'Servizi', 'slug' => 'servizi', 'status' => 'published']);
+
+        $this->entraCome(Ruolo::Author);
+
+        $this->expectException(AuthorizationException::class);
+
+        $pagina->refresh()->update(['status' => 'draft']);
+    }
+
+    public function test_un_autore_non_puo_ritirare_la_home(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+        Page::where('is_home', true)->first()->update(['status' => 'published']);
+
+        $this->entraCome(Ruolo::Author);
+
+        try {
+            Page::where('is_home', true)->first()->update(['status' => 'draft']);
+            $this->fail('La home e\' stata ritirata dal sito da un autore.');
+        } catch (AuthorizationException) {
+            $this->assertSame('published', Page::where('is_home', true)->first()->status);
+        }
+    }
+
+    public function test_un_redattore_ritira_dal_sito(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+        $pagina = Page::create(['title' => 'Servizi', 'slug' => 'servizi', 'status' => 'published']);
+
+        $pagina->refresh()->update(['status' => 'draft']);
+
+        $this->assertSame('draft', $pagina->fresh()->status);
+    }
+
+    /**
+     * Creare un tag dal form di un articolo e' creare un tag.
+     *
+     * Filament non consulta la policy del modello legato quando apre la
+     * finestrella di `createOptionForm`: senza il controllo a mano, un autore
+     * aggirava `TagPolicy` passando di li'.
+     */
+    public function test_un_autore_non_crea_tag_dal_form_di_un_articolo(): void
+    {
+        $this->entraCome(Ruolo::Author);
+
+        $this->assertNull($this->schemaDiCreazione('tags'), 'La scorciatoia per creare un tag e\' aperta a un autore.');
+        $this->assertNull($this->schemaDiCreazione('categories'), 'La scorciatoia per creare una categoria e\' aperta a un autore.');
+
+        $this->entraCome(Ruolo::Editor);
+
+        $this->assertNotNull($this->schemaDiCreazione('tags'));
+        $this->assertNotNull($this->schemaDiCreazione('categories'));
+    }
+
+    /**
+     * Lo schema della finestrella "crea al volo" di un campo del form
+     * articolo, o null se quel campo non la offre a chi sta guardando.
+     */
+    private function schemaDiCreazione(string $nome): array | Schema | null
+    {
+        $vuoto = Schema::make(Livewire::test(CreatePost::class)->instance());
+        $schema = PostForm::configure(Schema::make(Livewire::test(CreatePost::class)->instance()));
+
+        foreach ($schema->getFlatComponents(withHidden: true) as $componente) {
+            if ($componente instanceof Select && $componente->getName() === $nome) {
+                return $componente->getCreateOptionActionForm($vuoto);
+            }
+        }
+
+        $this->fail("Campo {$nome} non trovato nel form degli articoli.");
     }
 
     public function test_un_redattore_pubblica(): void

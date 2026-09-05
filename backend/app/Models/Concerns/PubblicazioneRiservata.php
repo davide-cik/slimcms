@@ -28,13 +28,25 @@ trait PubblicazioneRiservata
     public static function bootPubblicazioneRiservata(): void
     {
         static::saving(function (Model $modello): void {
-            if (! in_array($modello->status, ['published', 'scheduled'], true)) {
-                return;
-            }
+            // Cio' che conta non e' il valore nuovo ma il fatto che `status`
+            // cambi da o verso "online". Guardando solo il valore nuovo,
+            // portare a bozza una pagina pubblicata passava indisturbato:
+            // ritirare dal sito e' un potere quanto pubblicare, e sulla home
+            // e' peggio — `Page::deleting` impedisce di cancellarla, ma
+            // nessuno impediva di ritirarla, e senza home la build fallisce
+            // e le pubblicazioni si fermano finche' qualcuno non capisce
+            // perche'.
+            $online = ['published', 'scheduled'];
 
-            // Salvare di nuovo un contenuto gia' online non e' pubblicare:
-            // un autore deve poter correggere un refuso in una pagina viva.
-            if ($modello->exists && ! $modello->isDirty('status')) {
+            $era = $modello->exists
+                ? in_array($modello->getOriginal('status'), $online, true)
+                : false;
+            $sara = in_array($modello->status, $online, true);
+
+            // Salvare di nuovo un contenuto senza toccarne lo stato non e'
+            // pubblicare: un autore deve poter correggere un refuso in una
+            // pagina viva.
+            if ($era === $sara) {
                 return;
             }
 
@@ -57,7 +69,7 @@ trait PubblicazioneRiservata
             }
 
             throw new AuthorizationException(
-                'Il tuo ruolo su questo sito non consente di pubblicare: salva come bozza e chiedi a un redattore.'
+                'Il tuo ruolo su questo sito non consente di mettere online un contenuto ne\' di ritirarlo: chiedi a un redattore.'
             );
         });
     }

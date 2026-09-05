@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\ControlPlane\Filament\Resources\Sites\Pages\EditSite;
 use App\ControlPlane\Models\AdminUser;
+use App\Models\BuildRequest;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\Tenant;
@@ -163,5 +164,57 @@ class ConfigurazioneSitoTest extends TestCase
 
         $this->assertSame('X', $json['layout_config']['voci'][0]['etichetta']);
         $this->assertSame('G-ABC123', $json['seo_defaults']['analytics']['ga4']);
+    }
+
+    /**
+     * Cambiare la configurazione del sito accoda una build.
+     *
+     * L'elenco delle colonne "strutturali" era scritto al positivo e non e'
+     * stato aggiornato: `footer_config`, `layout_config`, `og_config` e
+     * `favicon_initials` sono arrivate dopo e non ci sono mai entrate.
+     * Configurare il footer dal pannello non rigenerava niente, e il sito
+     * restava com'era senza dirlo. Ora l'elenco e' al negativo — cosa NON
+     * tocca il sito — cosi' una colonna nuova accoda finche' qualcuno non
+     * dichiara il contrario.
+     */
+    public function test_cambiare_la_configurazione_accoda_una_build(): void
+    {
+        foreach (['layout_config' => ['testata' => ['tipo' => 'centrata']],
+                  'footer_config' => ['colonne' => []],
+                  'og_config' => ['payoff' => 'Nuovo'],
+                  'seo_defaults' => ['meta_title' => 'X']] as $colonna => $valore) {
+            BuildRequest::query()->delete();
+
+            $this->site->update([$colonna => $valore]);
+
+            $this->assertSame(
+                1,
+                BuildRequest::count(),
+                "Cambiare {$colonna} non ha accodato nessuna build: il sito resta com'era."
+            );
+        }
+
+        BuildRequest::query()->delete();
+        $this->site->update(['favicon_initials' => 'ZZ']);
+        $this->assertSame(1, BuildRequest::count(), 'Le iniziali della favicon non accodano una build.');
+    }
+
+    /**
+     * Lo stato di dominio e certificato lo riscrive il monitoraggio ogni
+     * giorno e non cambia una riga di quello che viene pubblicato: se
+     * accodasse, ogni sito verrebbe ricostruito una volta al giorno per
+     * niente.
+     */
+    public function test_lo_stato_del_certificato_non_accoda_niente(): void
+    {
+        BuildRequest::query()->delete();
+
+        $this->site->update([
+            'ssl_status' => 'valido',
+            'ssl_checked_at' => now(),
+            'dns_status' => 'ok',
+        ]);
+
+        $this->assertSame(0, BuildRequest::count());
     }
 }

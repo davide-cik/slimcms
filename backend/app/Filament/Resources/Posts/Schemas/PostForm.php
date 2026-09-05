@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Posts\Schemas;
 
+use App\Enums\Ruolo;
 use App\Support\RuoloCorrente;
+use Illuminate\Database\Eloquent\Model;
 use App\Filament\Resources\Pages\Schemas\PageForm;
 use App\Support\PerSito;
 use App\Support\Slug;
@@ -58,11 +60,16 @@ class PostForm
                         ->relationship('categories', 'name')
                         ->multiple()
                         ->preload()
-                        ->createOptionForm([
+                        // Creare una categoria da qui e' creare una categoria:
+                        // Filament non consulta la policy del modello legato
+                        // quando apre questa finestrella, quindi il permesso va
+                        // chiesto a mano. Senza, un autore aggirava
+                        // `CategoryPolicy` passando dal form di un articolo.
+                        ->createOptionForm(fn (): ?array => RuoloCorrente::nelPannello()?->almeno(Ruolo::Editor) ? [
                             TextInput::make('name')->label('Nome')->required(),
                             TextInput::make('slug')->label('Slug')->required()
                                 ->unique(table: 'categories', modifyRuleUsing: PerSito::regolaUnica(...)),
-                        ]),
+                        ] : null),
 
                     // Non piu' TagsInput su una colonna JSON: i tag sono
                     // righe di questo sito, quindi si riusano fra articoli,
@@ -74,7 +81,9 @@ class PostForm
                         ->multiple()
                         ->preload()
                         ->searchable()
-                        ->createOptionForm([
+                        // Come per le categorie: il permesso di creare un tag
+                        // e' di `TagPolicy`, e questa scorciatoia lo scavalca.
+                        ->createOptionForm(fn (): ?array => RuoloCorrente::nelPannello()?->almeno(Ruolo::Editor) ? [
                             TextInput::make('name')
                                 ->label('Nome')
                                 ->required()
@@ -83,8 +92,10 @@ class PostForm
                                 ->afterStateUpdated(fn (?string $state, callable $set) => $set('slug', Slug::da($state))),
                             TextInput::make('slug')->label('Slug')->required()->maxLength(60)
                                 ->unique(table: 'tags', modifyRuleUsing: PerSito::regolaUnica(...)),
-                        ])
-                        ->helperText('Scrivi per cercarne uno; se non c\'e\', lo crei da qui.'),
+                        ] : null)
+                        ->helperText(fn (): string => RuoloCorrente::nelPannello()?->almeno(Ruolo::Editor)
+                            ? 'Scrivi per cercarne uno; se non c\'e\', lo crei da qui.'
+                            : 'Scegli fra i tag che esistono: crearne di nuovi e\' del redattore.'),
 
                     Select::make('author_id')
                         ->label('Autore')
@@ -125,8 +136,18 @@ class PostForm
                         // Filament rifiuta comunque un'opzione disabilitata
                         // che arrivi dal browser, e il modello la rifiuta
                         // un'altra volta (PubblicazioneRiservata).
-                        ->disableOptionWhen(fn (string $value): bool => $value !== 'draft'
-                            && ! RuoloCorrente::puoPubblicare())
+                        ->disableOptionWhen(function (string $value, ?Model $record): bool {
+                            if (RuoloCorrente::puoPubblicare()) {
+                                return false;
+                            }
+
+                            // Chi non puo' pubblicare puo' solo lasciare le
+                            // cose come stanno. Non basta tenere "Bozza"
+                            // sempre aperta: su un contenuto gia' online
+                            // sarebbe il pulsante per ritirarlo dal sito,
+                            // che e' lo stesso potere al contrario.
+                            return $value !== ($record?->status ?? 'draft');
+                        })
                         ->helperText(fn (): ?string => RuoloCorrente::puoPubblicare()
                             ? null
                             : 'Il tuo ruolo su questo sito non consente di pubblicare: salva come bozza, un redattore lo mettera\' online.')

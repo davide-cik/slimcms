@@ -436,6 +436,19 @@ gia' online si ritroverebbe il campo vuoto e verrebbe ritirata dal sito senza ch
 l'abbia chiesto — e il modello le rifiuta di nuovo. `scheduled` conta quanto `published`:
 rimandare di un'ora resta pubblicare.
 
+**E vale nei due sensi.** Ritirare dal sito e' lo stesso potere al contrario, e la guardia
+guarda quindi la *transizione* (`da online a non online`, e viceversa), non il valore
+nuovo. Guardando solo il valore nuovo, portare a bozza una pagina pubblicata passava
+indisturbato: sulla home e' peggio che cancellarla, perche' `Page::deleting` impedisce di
+cancellarla e niente impediva di ritirarla — e senza `index.html` il gate di deploy blocca
+tutte le pubblicazioni successive. Per lo stesso motivo, a chi non puo' pubblicare il form
+lascia selezionabile **solo lo stato corrente**: tenere "Bozza" sempre aperta sarebbe il
+pulsante per ritirare.
+
+Filament non consulta la policy del modello legato quando apre la finestrella di
+`createOptionForm`: creare una categoria o un tag dal form di un articolo scavalcava
+`CategoryPolicy` e `TagPolicy`. Il permesso e' chiesto a mano nel form, e un test lo fissa.
+
 Attenzione: `saving` scatta **prima** di `creating`, quindi alla prima creazione `site_id`
 e' ancora vuoto e la guardia deve ricadere su `BelongsToSite::currentSiteId()`. Chiedendo
 il ruolo su `null` nessuno riusciva piu' a pubblicare una pagina nuova.
@@ -464,6 +477,15 @@ c'e'.
 
 Quando un contenuto pubblicato cambia, un observer accoda una rigenerazione in
 `build_requests`. Un cron esegue le build in attesa ogni minuto.
+
+Anche una modifica al **sito** accoda. `SiteObserver` elenca le colonne che **non**
+toccano il sito pubblicato (id, timestamp, stato di DNS e certificato) e accoda su tutte le
+altre. Al positivo — l'elenco di quelle che lo toccano — era un elenco da aggiornare a ogni
+colonna nuova, e non e' successo: `footer_config`, `layout_config`, `og_config` e
+`favicon_initials` sono arrivate dopo e non ci sono mai entrate, quindi configurare il
+footer o la testata dal pannello non rigenerava niente e il sito restava com'era senza
+dirlo. Una build di troppo si nota e costa un minuto; una build che non parte non si nota
+affatto.
 
 **Non è un worker Laravel, ed è una deviazione dalle specifiche §7.1 dovuta all'ambiente:**
 php.ini qui disabilita `pcntl_*`, quindi `queue:work` in modalità daemon e **Horizon non

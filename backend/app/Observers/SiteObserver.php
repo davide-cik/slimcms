@@ -28,9 +28,24 @@ class SiteObserver
 
     public function updated(Site $site): void
     {
-        $strutturali = ['domain', 'name', 'theme', 'logo_path', 'favicon_path', 'seo_defaults'];
+        // L'elenco e' di cio' che NON tocca il sito pubblicato, non di cio'
+        // che lo tocca. Nell'altro verso era un elenco da aggiornare a ogni
+        // colonna nuova, e non e' successo: `footer_config`, `layout_config`,
+        // `og_config` e `favicon_initials` sono arrivate dopo e non ci sono
+        // mai entrate. Cambiare il footer o la testata dal pannello non
+        // accodava nessuna build, e il sito restava com'era senza dirlo.
+        //
+        // Cosi' invece una colonna nuova accoda una build finche' qualcuno
+        // non dichiara il contrario: una build di troppo si nota e costa un
+        // minuto, una build che non parte non si nota affatto.
+        $operative = [
+            'id', 'tenant_id', 'created_at', 'updated_at',
+            // Stato di dominio e certificato: lo scrive il monitoraggio ogni
+            // giorno, e non cambia una riga di quello che viene pubblicato.
+            'ssl_status', 'ssl_expires_at', 'ssl_checked_at', 'ssl_last_error', 'dns_status',
+        ];
 
-        if (empty(array_intersect($strutturali, array_keys($site->getChanges())))) {
+        if (empty(array_diff(array_keys($site->getChanges()), $operative))) {
             return;
         }
 
