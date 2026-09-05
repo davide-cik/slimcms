@@ -329,7 +329,43 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
     font-weight: 600;
   }
 
+  /* La classe che lega il modulo al suo script: senza una regola propria il
+     gate del CSS la segnala come classe senza stile, ed e' giusto che lo
+     faccia — non sa distinguere un gancio da una dimenticanza. */
+  .modulo {
+    display: block;
+  }
+
+  /* Il consenso e' una casella con l'etichetta accanto, non sopra. */
+  .campo-consenso label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .campo-consenso input {
+    margin-top: 0.2rem;
+    flex: 0 0 auto;
+  }
+
+  /* Nascosto finche' la domanda non arriva dall'API: un campo obbligatorio
+     senza domanda sarebbe un modulo che non si puo' inviare. */
+  .campo-captcha[hidden] {
+    display: none;
+  }
+
+  .campo-captcha input {
+    max-width: 8rem;
+  }
+
+  .captcha-domanda {
+    font-weight: 600;
+  }
+
   .campo input,
+  .campo select,
   .campo textarea {
     font: inherit;
     padding: 0.6rem 0.7rem;
@@ -344,6 +380,7 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   .campo input:focus-visible,
+  .campo select:focus-visible,
   .campo textarea:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 1px;
