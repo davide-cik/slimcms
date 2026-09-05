@@ -93,6 +93,43 @@ class ContrattoBlocchiTest extends TestCase
         ]));
     }
 
+    /**
+     * Ogni blocco e' reso anche dall'ANTEPRIMA del pannello.
+     *
+     * L'anteprima e' un secondo renderer: Astro non gira in una richiesta
+     * PHP, e una bozza non esiste sul sito statico. Due meta' scritte in
+     * momenti diversi sono la giuntura da cui nasce quasi ogni guasto di
+     * questo progetto — qui il rischio e' che chi scrive aggiunga un blocco,
+     * lo veda online, e nell'anteprima trovi un buco.
+     *
+     * Non si controlla che il file citi il tipo: si RENDE davvero ogni
+     * blocco con i dati di prova e si pretende che esca del markup. Un
+     * `@case` vuoto passerebbe un controllo testuale.
+     */
+    public function test_ogni_blocco_e_reso_anche_dall_anteprima(): void
+    {
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $muti = [];
+
+        foreach ($this->tipiDelPannello() as $tipo) {
+            $html = trim(view('anteprima.blocchi', [
+                'blocchi' => [['type' => $tipo, 'data' => $this->datiDiProva($tipo, $uuid)]],
+            ])->render());
+
+            // Il ramo di riserva dice "l'anteprima non sa disegnarlo": vale
+            // come assenza, non come rendering.
+            if ($html === '' || str_contains($html, 'non sa ancora disegnarlo')) {
+                $muti[] = $tipo;
+            }
+        }
+
+        $this->assertSame([], $muti, implode(' ', [
+            'Questi blocchi non compaiono nell\'anteprima del pannello:',
+            implode(', ', $muti) . '.',
+            'Chi scrive li vedrebbe online e non prima di pubblicare.',
+        ]));
+    }
+
     public function test_ogni_blocco_reso_da_astro_e_redigibile(): void
     {
         $sorgente = (string) file_get_contents(self::BLOCCHI_ASTRO);

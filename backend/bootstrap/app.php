@@ -20,6 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
+        // Un ospite sulle rotte protette dalla guardia `web` finisce al
+        // login del pannello dei contenuti. Laravel per difetto cerca una
+        // rotta chiamata `login`, che qui non esiste: i due pannelli
+        // Filament registrano le proprie con un nome col prefisso, e senza
+        // questo un accesso non autenticato dava "Route [login] not defined"
+        // — un errore 500 al posto di un rimando alla pagina d'accesso.
+        $middleware->redirectGuestsTo(fn () => route('filament.admin.auth.login'));
+
         $middleware->alias([
             // Risolve il sito dal dominio nella URL: per gli endpoint
             // pubblici chiamati dal browser del visitatore.

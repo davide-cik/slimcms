@@ -815,6 +815,49 @@ non sulla sola presenza della chiave di sessione: così poggia su un fatto regis
 verificabile a posteriori. Segreto TOTP e codici di recupero sono **cifrati a riposo**
 (`'encrypted'` cast): chi legge il database non deve poter rigenerare i codici di nessuno.
 
+## Anteprima di una pagina
+
+Una bozza **non esiste** sul sito: il sito e' statico e contiene solo cio' che e'
+pubblicato. Chi scrive deve poter vedere come verra' prima di mettercela, quindi
+l'anteprima la disegna Laravel — `GET /anteprima/pagina/{id}`, fuori dal pannello Filament
+perche' dev'essere un documento HTML intero senza la cornice dell'amministrazione intorno.
+
+**I fogli di stile sono quelli veri del sito pubblicato**, non una copia. `StiliDelSito`
+legge la home del dominio del cliente e ne prende i `<link rel="stylesheet">` (in cache
+cinque minuti, timeout quattro secondi). E' la differenza fra un'anteprima che assomiglia
+al sito e una che gli somigliava sei mesi fa: non c'e' CSS da tenere allineato. Solo i
+fogli del sito stesso, altrimenti un `<link>` verso un dominio qualsiasi finirebbe caricato
+dentro il pannello. Se il sito non e' mai stato pubblicato non ce n'e' nessuno, e la
+striscia in alto lo dice invece di spacciare una pagina senza stile per il risultato.
+
+L'autorizzazione passa dalla **policy vera**: si fissa il pannello e il sito della pagina,
+poi si chiede al Gate. Un controllo scritto a mano nel controller sarebbe una seconda
+regola da tenere allineata a `PagePolicy`.
+
+### Il markup e' un secondo renderer, e va tenuto onesto
+
+`resources/views/anteprima/blocchi.blade.php` rispecchia `Blocchi.astro`, perche' Astro non
+gira in una richiesta PHP. E' esattamente la giuntura da cui nasce quasi ogni guasto di
+questo progetto, quindi `ContrattoBlocchiTest` **rende ogni tipo di blocco anche da qui**
+con i dati di prova e pretende che esca del markup — non che il file citi il tipo, che un
+`@case` vuoto passerebbe.
+
+Due scostamenti voluti, dichiarati anche a schermo:
+
+- `incorpora` non produce un iframe ma un segnaposto. Il controllo su quali domini si
+  possono incorporare e' logica di sicurezza, e riprodurla qui vorrebbe dire tenerne due
+  copie allineate: la peggior duplicazione possibile.
+- `modulo_contatto` e' inerte: un'anteprima non deve poter mandare un messaggio vero.
+
+Testata e pie' di pagina non sono mostrati: vivono in `Base.astro`, e rispecchiarli
+raddoppierebbe la superficie da tenere allineata per un guadagno che il redattore non sta
+cercando — sta guardando il contenuto che ha appena scritto.
+
+Nota: `redirectGuestsTo` in `bootstrap/app.php` manda un ospite al login del pannello.
+Laravel per difetto cerca una rotta chiamata `login`, che qui non esiste — i due pannelli
+registrano le proprie col prefisso — e senza quella riga un accesso non autenticato dava
+`Route [login] not defined`, cioe' un 500 al posto della pagina d'accesso.
+
 ## Il contratto fra pannello e sito pubblico
 
 `backend/tests/Feature/ContrattoBlocchiTest.php` legge l'elenco dei blocchi dal form
