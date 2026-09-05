@@ -34,7 +34,13 @@ class RedirectTest extends TestCase
         $this->sitoB = Site::withoutTenancy()->create(['tenant_id' => $tenant->id, 'domain' => 'b.test', 'name' => 'B']);
 
         $this->redattore = $redattore = User::withoutSitePivotScope()->create(['name' => 'R', 'email' => 'r@r.it', 'password' => bcrypt('x')]);
+        // Redattrice su entrambi i siti dello stesso cliente: e' il caso
+        // che il test descrive — la stessa persona che lavora su due siti
+        // e vuole lo stesso slug in tutti e due. Da quando ci sono le
+        // policy il ruolo sul sito B serve davvero: senza, il pannello la
+        // fermerebbe prima ancora di arrivare alla regola di unicita'.
         $redattore->sites()->attach($this->sitoA, ['role' => 'editor']);
+        $redattore->sites()->attach($this->sitoB, ['role' => 'editor']);
 
         $this->actingAs($redattore);
         Filament::setCurrentPanel('admin');

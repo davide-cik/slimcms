@@ -383,6 +383,83 @@ dall'articolo, non dal contesto: in una migrazione il contesto tenant non c'è (
 Il filtro `?tag=` dell'API cerca per **slug**: prima cercava la stringa esatta nel JSON,
 quindi "Performance" e "performance" erano due filtri diversi.
 
+## Ruoli e permessi
+
+Quattro ruoli sul pivot `site_user`, in scala: `viewer` < `author` < `editor` < `admin`
+(`App\Enums\Ruolo`). Ognuno puo' fare tutto quello che puo' fare quello sotto di lui.
+Una matrice per singola azione sarebbe piu' espressiva e sarebbe anche il posto dove le
+eccezioni si accumulano finche' nessuno sa piu' cosa vede un autore; quattro gradini si
+spiegano in una riga a un cliente.
+
+Il ruolo sta sul pivot e non sull'utente: la stessa persona puo' essere amministratore di
+un sito e autore di un altro.
+
+| | viewer | author | editor | admin |
+|---|---|---|---|---|
+| Vedere pagine, articoli, media, categorie, tag | ✓ | ✓ | ✓ | ✓ |
+| Scrivere e modificare pagine e articoli, caricare media | | ✓ | ✓ | ✓ |
+| **Pubblicare** | | | ✓ | ✓ |
+| Eliminare contenuti e media, gestire categorie e tag | | | ✓ | ✓ |
+| Reindirizzamenti e pagine mancanti (anche solo vederli) | | | ✓ | ✓ |
+| Gestire i redattori | | | | ✓ |
+| Eliminare definitivamente | | | | ✓ |
+
+Prima di queste policy il pannello non ne aveva **nessuna**, e senza policy Filament
+consente tutto: un `editor` apriva `/admin/<sito>/users` e si promuoveva ad `admin`. Le
+quattro etichette c'erano gia' nel form e non le faceva rispettare niente.
+
+### Le abilita' mancanti non negano: consentono
+
+`get_authorization_response()` (in `filament/filament/src/helpers.php`) cade fino a
+`Response::allow()` quando la policy **esiste** ma il metodo per quell'azione **no**. Una
+policy scritta a mano che dimentica `deleteAny` lascia aperta la cancellazione di massa e
+sembra completa. Per questo le dodici abilita' che Filament interroga stanno scritte una
+volta sola in `PolicyDiSito`, e `PolicyRuoliTest` verifica che nessuna sottoclasse ne
+perda una e che ogni risorsa del pannello abbia la sua policy.
+
+La firma e' `Authenticatable`, non `User`: il Gate consegna l'utente della guardia attiva,
+e da una pagina del control plane arriva un `AdminUser`. Con `User` nella firma era un
+errore di tipo — un 500 al posto di un no. Chi amministra la piattaforma entra nel
+pannello di un sito impersonando un redattore, non per diritto proprio.
+
+### Pubblicare e' l'unica cosa che esce dal pannello
+
+Una pagina pubblicata accoda una build e finisce online; tutto il resto resta reversibile
+dentro l'amministrazione. E' la linea fra autore e redattore, ed e' anche l'unico permesso
+che **non** e' un'abilita' di policy, perche' non e' un'azione: e' un valore del campo
+`status`.
+
+La guardia sta quindi sul modello (`PubblicazioneRiservata` su `Page` e `Post`), non solo
+nel form: una tendina disabilitata non e' un controllo, lo stato di un componente Livewire
+arriva dal browser. Il form disabilita le opzioni — non le nasconde, altrimenti una pagina
+gia' online si ritroverebbe il campo vuoto e verrebbe ritirata dal sito senza che nessuno
+l'abbia chiesto — e il modello le rifiuta di nuovo. `scheduled` conta quanto `published`:
+rimandare di un'ora resta pubblicare.
+
+Attenzione: `saving` scatta **prima** di `creating`, quindi alla prima creazione `site_id`
+e' ancora vuoto e la guardia deve ricadere su `BelongsToSite::currentSiteId()`. Chiedendo
+il ruolo su `null` nessuno riusciva piu' a pubblicare una pagina nuova.
+
+Salvare di nuovo un contenuto gia' online non e' pubblicare: un autore deve poter
+correggere un refuso in una pagina viva.
+
+### Nessuno concede piu' di quanto ha
+
+Il ruolo scelto nel form e' `dehydrated(false)`: lo scrive a mano `CreateUser`/`EditUser`,
+quindi una policy sul modello `User` non lo raggiunge. Passa da
+`RuoloCorrente::concedibile()`, che lo abbassa al proprio. Oggi al form ci arriva solo un
+amministratore e il limite non morde mai — ed e' il momento giusto per scriverlo, perche'
+il giorno in cui un redattore potra' invitare un autore nessuno si ricordera' di
+aggiungerlo. Un valore che non e' un ruolo non concede di piu': si ricade su `author`.
+
+Un amministratore non puo' togliere se stesso dal sito: se e' l'ultimo, il sito resta
+senza nessuno che possa nominarne un altro e rimediare richiede il control plane.
+
+`RuoloCorrente` e' l'unico punto in cui si risponde a "che ruolo ha chi sta guardando
+questo sito": lo chiedono le policy per decidere e i form per non offrire quello che
+verrebbe comunque rifiutato. Un pulsante che da' errore e' peggio di un pulsante che non
+c'e'.
+
 ## Coda di build
 
 Quando un contenuto pubblicato cambia, un observer accoda una rigenerazione in

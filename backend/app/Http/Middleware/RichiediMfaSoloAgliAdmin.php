@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Ruolo;
 use Closure;
 use Filament\Auth\MultiFactor\Http\Middleware\EnsureMultiFactorAuthenticationIsEnabled;
 use App\Http\Controllers\ImpersonazioneController;
@@ -49,7 +50,7 @@ class RichiediMfaSoloAgliAdmin extends EnsureMultiFactorAuthenticationIsEnabled
 
         $eAdmin = $utente->sites()
             ->withoutTenancy()
-            ->wherePivot('role', 'admin')
+            ->wherePivot('role', Ruolo::Admin->value)
             ->exists();
 
         if (! $eAdmin) {

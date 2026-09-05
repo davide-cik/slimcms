@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Enums\Ruolo;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -41,12 +42,12 @@ class UserForm
             // relativo al SITO CORRENTE, non su un attributo dell'utente.
             Select::make('ruolo_sul_sito')
                 ->label('Ruolo su questo sito')
-                ->options([
-                    'admin' => 'Amministratore — gestisce anche gli altri redattori',
-                    'editor' => 'Redattore — crea e pubblica contenuti',
-                    'author' => 'Autore — crea contenuti, non pubblica',
-                    'viewer' => 'In sola lettura',
-                ])
+                // Le etichette stanno sull'enum insieme alla scala dei
+                // poteri: sono una promessa, e le policy che la fanno
+                // rispettare leggono la stessa fonte. Scritte qui a mano
+                // sarebbero libere di divergere, ed e' cosi' che nasce un
+                // ruolo che dice una cosa e ne fa un'altra.
+                ->options(Ruolo::opzioni())
                 ->default('editor')
                 ->required()
                 ->dehydrated(false)

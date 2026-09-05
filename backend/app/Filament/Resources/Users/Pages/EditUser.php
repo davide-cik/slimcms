@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Support\RuoloCorrente;
 use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
@@ -38,8 +39,11 @@ class EditUser extends EditRecord
             return;
         }
 
+        // Il valore della tendina arriva dal browser come tutto il resto:
+        // passa da RuoloCorrente, che non lascia concedere piu' di quanto si
+        // ha. Vedi il commento la' dentro.
         $this->record->sites()->syncWithoutDetaching([
-            $site->getKey() => ['role' => $this->data['ruolo_sul_sito'] ?? 'editor'],
+            $site->getKey() => ['role' => RuoloCorrente::concedibile($this->data['ruolo_sul_sito'] ?? null)->value],
         ]);
     }
 }

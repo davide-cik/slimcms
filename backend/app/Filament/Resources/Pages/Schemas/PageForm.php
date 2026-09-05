@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Pages\Schemas;
 
+use App\Support\RuoloCorrente;
 use Filament\Forms\Components\Builder as BlockBuilder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
@@ -104,6 +105,18 @@ class PageForm
                         ])
                         ->default('draft')
                         ->required()
+                        // Chi non ha il grado di redattore vede le opzioni ma
+                        // non le puo' scegliere: nasconderle svuoterebbe il
+                        // campo su una pagina gia' online, che verrebbe
+                        // ritirata dal sito senza che nessuno l'abbia chiesto.
+                        // Filament rifiuta comunque un'opzione disabilitata
+                        // che arrivi dal browser, e il modello la rifiuta
+                        // un'altra volta (PubblicazioneRiservata).
+                        ->disableOptionWhen(fn (string $value): bool => $value !== 'draft'
+                            && ! RuoloCorrente::puoPubblicare())
+                        ->helperText(fn (): ?string => RuoloCorrente::puoPubblicare()
+                            ? null
+                            : 'Il tuo ruolo su questo sito non consente di pubblicare: salva come bozza, un redattore la mettera\' online.')
                         ->live(),
 
                     DateTimePicker::make('publish_at')

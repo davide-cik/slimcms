@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Ruolo;
 use App\Models\Concerns\BelongsToSiteViaPivot;
 use App\Models\Concerns\HasAppMfa;
 use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
@@ -41,6 +42,9 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         'email',
         'password',
     ];
+
+    /** @var array<int|string, string|null> ruolo per sito, riempita alla prima domanda */
+    protected array $ruoliPerSito = [];
 
     protected $hidden = [
         'password',
@@ -107,8 +111,37 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
      * Ruolo dell'utente su un sito specifico. Il ruolo sta sul pivot:
      * la stessa persona puo' essere admin su un sito e author su un altro.
      */
-    public function roleOn(Site $site): ?string
+    public function roleOn(Site | int | string | null $site): ?string
     {
-        return $this->sites()->whereKey($site)->first()?->pivot->role;
+        $chiave = $site instanceof Site ? $site->getKey() : $site;
+
+        if ($chiave === null) {
+            return null;
+        }
+
+        // Memoria per istanza. Una policy viene interrogata decine di volte
+        // per schermata — una per riga, una per ogni azione di quella riga —
+        // e senza questo sarebbero decine di query identiche. Sta
+        // sull'istanza e non in una static: un utente riletto dal database
+        // riparte pulito, come succede per le relazioni.
+        if (! array_key_exists($chiave, $this->ruoliPerSito)) {
+            // withoutTenancy() come negli altri metodi: dentro il pannello la
+            // tenancy e' inizializzata e il global scope di stancl su Site
+            // nasconderebbe i siti degli altri clienti. Qui la domanda e'
+            // sul pivot, e la risposta non deve dipendere dallo stato della
+            // tenancy nel momento in cui viene fatta.
+            $this->ruoliPerSito[$chiave] = $this->sites()
+                ->withoutTenancy()
+                ->whereKey($chiave)
+                ->first()?->pivot->role;
+        }
+
+        return $this->ruoliPerSito[$chiave];
+    }
+
+    /** Lo stesso ruolo, come enum: la forma con cui ragionano le policy. */
+    public function ruolo(Site | int | string | null $site): ?Ruolo
+    {
+        return Ruolo::da($this->roleOn($site));
     }
 }
