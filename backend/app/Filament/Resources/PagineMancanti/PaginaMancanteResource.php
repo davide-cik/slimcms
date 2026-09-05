@@ -16,6 +16,12 @@ class PaginaMancanteResource extends Resource
 
     protected static ?string $modelLabel = 'pagina mancante';
 
+    // Senza, Filament costruisce l'indirizzo dalla cartella piu' dal
+    // nome della classe e ne esce `pagine-mancanti/pagina-mancantes`:
+    // un plurale inglese su una parola italiana, in una URL che il
+    // cliente vede.
+    protected static ?string $slug = 'pagine-mancanti';
+
     protected static ?string $pluralModelLabel = 'pagine mancanti';
 
     protected static ?string $navigationLabel = 'Pagine mancanti';

@@ -28,6 +28,10 @@ class MediaResource extends Resource
 {
     protected static ?string $model = Media::class;
 
+    // Altrimenti l'indirizzo e' `media-library/media`, che ripete due
+    // volte la stessa cosa in due lingue diverse.
+    protected static ?string $slug = 'libreria-media';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPhoto;
 
     protected static ?string $modelLabel = 'file';
