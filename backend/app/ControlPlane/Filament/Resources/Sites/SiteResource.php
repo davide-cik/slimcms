@@ -8,6 +8,7 @@ use App\Models\User;
 use Filament\Actions\Action as AzioneRiga;
 use Filament\Forms\Components\Textarea;
 use App\Services\GeneratoreOpenGraph;
+use App\Models\Page;
 use App\Models\Site;
 use App\Services\StatoDominio;
 use BackedEnum;
@@ -219,6 +220,38 @@ class SiteResource extends Resource
                         ->label('Barra di servizio: email')
                         ->email()
                         ->maxLength(120),
+                ])->columns(2),
+
+            Section::make('Blog')
+                ->description('Gli articoli vivono tutti sotto un segmento dell\'indirizzo. Gli archivi di categoria e tag ci stanno dentro.')
+                ->schema([
+                    TextInput::make('layout_config.blog.base')
+                        ->label('Segmento del blog')
+                        ->default('blog')
+                        ->maxLength(40)
+                        ->prefix('/')
+                        ->suffix('/')
+                        ->rule('regex:/^[a-z0-9-]{1,40}$/')
+                        ->validationMessages(['regex' => 'Solo lettere minuscole, numeri e trattini.'])
+                        ->helperText('blog, news, articoli... Cambiarlo sposta TUTTI gli indirizzi degli articoli: se il sito e gia pubblico, aggiungi prima i reindirizzamenti.')
+                        // Un segmento uguale allo slug di una pagina renderebbe
+                        // quella pagina irraggiungibile: vincono gli articoli.
+                        ->rules([
+                            fn (?Site $record) => function (string $attributo, $valore, \Closure $fallisce) use ($record) {
+                                if ($record === null || blank($valore)) {
+                                    return;
+                                }
+
+                                $scontro = Page::withoutSiteScope()
+                                    ->where('site_id', $record->id)
+                                    ->where('slug', trim((string) $valore, '/'))
+                                    ->exists();
+
+                                if ($scontro) {
+                                    $fallisce('Esiste gia una pagina con questo indirizzo: gli articoli la coprirebbero.');
+                                }
+                            },
+                        ]),
                 ])->columns(2),
 
             Section::make('Footer')

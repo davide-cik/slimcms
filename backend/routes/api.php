@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\OpenGraphController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\SitePageController;
 use App\Http\Controllers\Api\SiteRedirectController;
+use App\Http\Controllers\Api\SiteSitemapController;
 use App\Http\Controllers\Api\SitePostController;
 use App\Http\Resources\SiteResource;
 use App\Models\Site;
@@ -38,7 +39,7 @@ Route::prefix('sites/{site}')
         Route::get('pages/{slug}', [SitePageController::class, 'show']);
         Route::get('posts', [SitePostController::class, 'index']);
         Route::get('posts/{slug}', [SitePostController::class, 'show']);
-        Route::get('sitemap', [SitePageController::class, 'sitemap']);
+        Route::get('sitemap', SiteSitemapController::class);
 
         // Il .htaccess gia' compilato, non le righe grezze: la regola di come
         // si traduce un redirect in configurazione Apache sta in un punto

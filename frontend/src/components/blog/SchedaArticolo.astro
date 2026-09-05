@@ -1,0 +1,94 @@
+---
+import { percorsoMedia, type Articolo } from '../../lib/api';
+
+interface Props {
+  articolo: Articolo;
+  base: string;
+}
+
+const { articolo, base } = Astro.props;
+const url = `/${base}/${articolo.slug}/`;
+
+// La data si formatta qui e non nel template: il formato italiano esteso e'
+// leggibile, ma l'attributo datetime deve restare ISO perche' e' quello che
+// leggono i motori.
+const iso = articolo.published_at ?? undefined;
+const leggibile = iso
+  ? new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+  : null;
+---
+
+<article class="scheda">
+  {articolo.featured_image && (
+    <a href={url} class="scheda-figura" aria-hidden="true" tabindex="-1">
+      <img
+        src={percorsoMedia(articolo.featured_image)}
+        alt={articolo.featured_image.alt ?? ''}
+        loading="lazy"
+      />
+    </a>
+  )}
+
+  <div class="scheda-corpo">
+    {(articolo.categories ?? []).length > 0 && (
+      <p class="occhiello">{(articolo.categories ?? []).map((c) => c.name).join(' · ')}</p>
+    )}
+
+    <h2><a href={url}>{articolo.title}</a></h2>
+
+    {articolo.excerpt && <p class="scheda-estratto">{articolo.excerpt}</p>}
+
+    <p class="scheda-meta">
+      {leggibile && <time datetime={iso}>{leggibile}</time>}
+      {articolo.author?.name && <span> · {articolo.author.name}</span>}
+    </p>
+  </div>
+</article>
+
+<style>
+  /* Una griglia che si adatta al numero di articoli invece di imporne uno:
+     con due articoli non deve restare mezza pagina vuota a destra. */
+  .scheda {
+    display: grid;
+    gap: 1rem;
+    padding: 1.8rem 0;
+    border-top: 1px solid var(--riga);
+  }
+
+  /* Figlio di una griglia: senza min-width:0 un titolo con una parola
+     lunghissima allargherebbe la cella oltre la colonna invece di andare a
+     capo. Non e' una classe decorativa. */
+  .scheda-corpo { min-width: 0; }
+
+  .scheda-figura { display: block; }
+  .scheda-figura img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 3px;
+  }
+
+  .scheda h2 {
+    font-family: var(--display);
+    font-size: clamp(1.35rem, 2.6vw, 1.75rem);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    margin: 0.5rem 0 0;
+  }
+  .scheda h2 a { color: var(--inchiostro); text-decoration: none; }
+  .scheda h2 a:hover { color: var(--segnale); }
+
+  .scheda-estratto {
+    margin: 0.7rem 0 0;
+    max-width: 62ch;
+    color: var(--inchiostro-tenue);
+  }
+
+  .scheda-meta {
+    margin: 0.8rem 0 0;
+    font-family: var(--display);
+    font-size: 0.85rem;
+    color: var(--inchiostro-tenue);
+  }
+</style>

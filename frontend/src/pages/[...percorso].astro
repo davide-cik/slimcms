@@ -1,0 +1,211 @@
+---
+import Base, { type Documento } from '../layouts/Base.astro';
+import ContenutoPagina from '../components/ContenutoPagina.astro';
+import ContenutoArticolo from '../components/blog/ContenutoArticolo.astro';
+import IndiceBlog from '../components/blog/IndiceBlog.astro';
+import { elencoArticoli, elencoPagine, sito, type Articolo, type Pagina, type Sito, type Termine } from '../lib/api';
+import { grafoArchivioJsonLd, grafoArticoloJsonLd, grafoJsonLd } from '../lib/jsonld';
+
+/**
+ * Tutte le URL del sito, generate staticamente dai dati dell'API in fase di
+ * build. Il visitatore riceve HTML gia' pronto e non tocca mai il backend
+ * (specifiche, sezione 7).
+ *
+ * Una rotta sola e non una per tipo: il segmento del blog e' configurabile
+ * per sito (/blog/, /news/, /articoli/), e una cartella `src/pages/blog/`
+ * sarebbe una bugia il giorno in cui un cliente sceglie "news". Due rotte
+ * rest allo stesso livello sono ambigue per Astro, quindi si smista qui.
+ */
+export async function getStaticPaths() {
+  // Il sito si legge UNA volta: e' lo stesso per ogni URL, e rileggerlo per
+  // pagina sarebbe una chiamata sprecata per nulla.
+  const [pagine, articoli, s] = await Promise.all([elencoPagine(), elencoArticoli(), sito()]);
+  const base = s.base_blog;
+
+  // Un backend piu' vecchio del frontend non espone base_blog, e senza questo
+  // controllo la build produce felicemente /undefined/<slug>/ per ogni
+  // articolo: pagine valide, del peso giusto, a indirizzi inventati. Meglio
+  // fermarsi e dire perche'.
+  if (!base) {
+    throw new Error(
+      "L'API non espone `base_blog`: il backend e' piu' vecchio del frontend. " +
+        'Pubblica prima il backend (scripts/deploy-backend.sh).'
+    );
+  }
+
+  const voci: { params: { percorso?: string }; props: Record<string, unknown> }[] = [];
+
+  for (const pagina of pagine) {
+    voci.push({
+      // La pagina iniziale vive alla radice, le altre al proprio slug. Lo
+      // decide il flag is_home, non uno slug convenuto: cosi' rinominare lo
+      // slug non sposta per sbaglio la home.
+      params: { percorso: pagina.is_home ? undefined : pagina.slug },
+      props: { tipo: 'pagina', pagina, sito: s },
+    });
+  }
+
+  if (articoli.length > 0) {
+    voci.push({ params: { percorso: base }, props: { tipo: 'indice', articoli, sito: s } });
+
+    for (const articolo of articoli) {
+      voci.push({
+        params: { percorso: `${base}/${articolo.slug}` },
+        props: { tipo: 'articolo', articolo, sito: s },
+      });
+    }
+
+    // Gli archivi si ricavano dagli articoli, non da un elenco a parte: un
+    // termine resta in tabella anche quando l'ultimo articolo che lo usava
+    // torna bozza, e un archivio vuoto e' una pagina sottile. Cosi' esistono
+    // esattamente i termini che compaiono su un articolo pubblicato, e i
+    // collegamenti dentro gli articoli non possono puntare nel vuoto.
+    for (const tipo of ['categoria', 'tag'] as const) {
+      const gruppi = new Map<string, { termine: Termine; articoli: Articolo[] }>();
+
+      for (const articolo of articoli) {
+        const termini = tipo === 'categoria' ? articolo.categories : articolo.tags;
+
+        for (const termine of termini ?? []) {
+          const gruppo = gruppi.get(termine.slug) ?? { termine, articoli: [] };
+          gruppo.articoli.push(articolo);
+          gruppi.set(termine.slug, gruppo);
+        }
+      }
+
+      for (const [slug, gruppo] of gruppi) {
+        voci.push({
+          params: { percorso: `${base}/${tipo}/${slug}` },
+          props: { tipo: 'archivio', archivio: tipo, termine: gruppo.termine, articoli: gruppo.articoli, sito: s },
+        });
+      }
+    }
+  }
+
+  return voci;
+}
+
+const props = Astro.props as {
+  tipo: 'pagina' | 'indice' | 'articolo' | 'archivio';
+  sito: Sito;
+  pagina?: Pagina;
+  articolo?: Articolo;
+  articoli?: Articolo[];
+  archivio?: 'categoria' | 'tag';
+  termine?: Termine;
+};
+
+const infoSito = props.sito;
+const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
+const base = infoSito.base_blog;
+
+const editore = {
+  '@type': 'Organization',
+  name: 'Content is King Srl',
+  vatID: 'IT11732600967',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: 'via Carducci 8',
+    postalCode: '20814',
+    addressLocality: 'Varedo',
+    addressRegion: 'MB',
+    addressCountry: 'IT',
+  },
+};
+
+/* Ogni tipo costruisce il proprio descrittore e il proprio grafo: e' il
+   motivo per cui il layout non prende piu' una Pagina. Un articolo passato
+   alla funzione delle pagine compilerebbe senza errori e uscirebbe senza
+   autore e senza data. */
+let documento: Documento;
+
+if (props.tipo === 'pagina') {
+  const p = props.pagina!;
+  documento = {
+    percorso: p.is_home ? '/' : `/${p.slug}/`,
+    titolo: p.seo.meta_title,
+    descrizione: p.seo.meta_description,
+    ogTitolo: p.seo.og_title,
+    ogDescrizione: p.seo.og_description,
+    noindex: p.seo.noindex,
+    canonico: p.seo.canonical_url,
+    og: `/og/${p.slug}.png`,
+    jsonld: grafoJsonLd(p, dominio, editore),
+  };
+} else if (props.tipo === 'articolo') {
+  const a = props.articolo!;
+  documento = {
+    percorso: `/${base}/${a.slug}/`,
+    titolo: a.seo.meta_title,
+    descrizione: a.seo.meta_description,
+    ogTitolo: a.seo.og_title,
+    ogDescrizione: a.seo.og_description,
+    noindex: a.seo.noindex,
+    canonico: a.seo.canonical_url,
+    // Percorso distinto da quello delle pagine: una pagina e un articolo
+    // possono avere lo stesso slug, e con un percorso solo la seconda
+    // immagine sovrascriverebbe la prima.
+    og: `/og/articoli/${a.slug}.png`,
+    jsonld: grafoArticoloJsonLd(a, dominio, base, editore),
+  };
+} else if (props.tipo === 'indice') {
+  documento = {
+    percorso: `/${base}/`,
+    titolo: `Articoli — ${infoSito.name}`,
+    descrizione: `Tutti gli articoli pubblicati su ${infoSito.name}.`,
+    og: '/og/sito.png',
+    jsonld: grafoArchivioJsonLd(
+      `Articoli — ${infoSito.name}`,
+      `https://${dominio}/${base}/`,
+      props.articoli!,
+      dominio,
+      base
+    ),
+  };
+} else {
+  const t = props.termine!;
+  const etichetta = props.archivio === 'categoria' ? 'Categoria' : 'Tag';
+  const percorso = `/${base}/${props.archivio}/${t.slug}/`;
+  documento = {
+    percorso,
+    titolo: `${etichetta}: ${t.name} — ${infoSito.name}`,
+    descrizione: `Gli articoli di ${infoSito.name} in ${t.name}.`,
+    og: '/og/sito.png',
+    jsonld: grafoArchivioJsonLd(
+      `${etichetta}: ${t.name}`,
+      `https://${dominio}${percorso}`,
+      props.articoli!,
+      dominio,
+      base
+    ),
+  };
+}
+---
+
+<Base documento={documento} dominio={dominio} sito={infoSito}>
+  {props.tipo === 'pagina' && (
+    <ContenutoPagina pagina={props.pagina!} sito={infoSito} dominio={dominio} />
+  )}
+
+  {props.tipo === 'articolo' && <ContenutoArticolo articolo={props.articolo!} base={base} />}
+
+  {props.tipo === 'indice' && (
+    <IndiceBlog
+      articoli={props.articoli!}
+      base={base}
+      titolo="Articoli"
+      occhiello="Il blog"
+      introduzione={`Quello che scriviamo mentre costruiamo ${infoSito.name}.`}
+    />
+  )}
+
+  {props.tipo === 'archivio' && (
+    <IndiceBlog
+      articoli={props.articoli!}
+      base={base}
+      titolo={props.termine!.name}
+      occhiello={props.archivio === 'categoria' ? 'Categoria' : 'Tag'}
+      introduzione={`${props.articoli!.length} ${props.articoli!.length === 1 ? 'articolo' : 'articoli'}.`}
+    />
+  )}
+</Base>

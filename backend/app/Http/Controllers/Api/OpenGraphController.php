@@ -28,8 +28,14 @@ class OpenGraphController extends Controller
     /** Immagine di una pagina o di un articolo. */
     public function contenuto(Request $request, Site $site, string $slug): Response
     {
-        $contenuto = Page::where('slug', $slug)->first()
-            ?? Post::where('slug', $slug)->first();
+        // Lo stesso slug puo' esistere come pagina E come articolo: senza il
+        // tipo, l'articolo non avrebbe mai la propria immagine, perche' la
+        // pagina vincerebbe sempre.
+        $contenuto = match ($request->string('tipo')->toString()) {
+            'articolo' => Post::where('slug', $slug)->first(),
+            'pagina' => Page::where('slug', $slug)->first(),
+            default => Page::where('slug', $slug)->first() ?? Post::where('slug', $slug)->first(),
+        };
 
         // Uno slug inesistente non e' un errore da mostrare al mondo: si
         // ricade sull'immagine del sito, cosi' un link vecchio conserva
@@ -37,7 +43,13 @@ class OpenGraphController extends Controller
         $titolo = $contenuto->title ?? $site->name ?? $site->domain;
         $marcatore = $contenuto?->updated_at?->timestamp ?? 0;
 
-        return $this->rispondi($site, $titolo, $slug, $marcatore, $request->boolean('ritaglio'));
+        // Il tipo entra nella chiave di cache, non solo nella query: uno slug
+        // puo' esistere in entrambe le tabelle, e con la sola coppia
+        // slug+timestamp due contenuti creati nello stesso secondo si
+        // scambiavano l'immagine. Trovato da un test, non da un cliente.
+        $chiave = ($contenuto instanceof Post ? 'articolo' : 'pagina') . ':' . $slug;
+
+        return $this->rispondi($site, $titolo, $chiave, $marcatore, $request->boolean('ritaglio'));
     }
 
     /** Immagine predefinita del sito, usata dove non c'e' un contenuto. */

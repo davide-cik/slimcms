@@ -65,6 +65,23 @@ class Site extends Model implements HasMedia
     }
 
     /**
+     * Il segmento sotto cui vive il blog: /blog/, /news/, /articoli/...
+     *
+     * Sta qui e non nel frontend perche' lo usano in tre posti che devono
+     * concordare: le URL della sitemap, il JSON-LD e le rotte generate da
+     * Astro. Tre copie della stessa stringa e' esattamente la giuntura che in
+     * questo progetto ha gia' prodotto piu' di un guasto.
+     */
+    public function baseBlog(): string
+    {
+        $base = trim((string) ($this->layout_config['blog']['base'] ?? 'blog'), '/');
+
+        // Un valore vuoto o assurdo metterebbe gli articoli sulla radice, dove
+        // si scontrerebbero con gli slug delle pagine.
+        return preg_match('/^[a-z0-9-]{1,40}$/', $base) === 1 ? $base : 'blog';
+    }
+
+    /**
      * Nelle URL il sito e' identificato dal dominio, non dall'id numerico:
      * /api/sites/slimcms.it/pages e' leggibile e stabile, /api/sites/1/pages no.
      */

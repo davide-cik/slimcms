@@ -1,0 +1,54 @@
+---
+import Blocchi from './blocchi/Blocchi.astro';
+import type { Pagina, Sito } from '../lib/api';
+
+interface Props {
+  pagina: Pagina;
+  sito: Sito;
+  dominio: string;
+}
+
+const { pagina, sito: infoSito, dominio } = Astro.props;
+
+// Il doppio registro e' una scelta del sito, non del layout: c'e' solo se il
+// pannello l'ha attivato, e il testo introduttivo e' quello scritto li'.
+const doppio = infoSito?.layout_config?.doppio ?? {};
+const mostraDoppio =
+  doppio.attivo === true &&
+  (Boolean(pagina.geo.structured_summary) || pagina.geo.key_facts.length > 0);
+---
+
+<Blocchi blocchi={pagina.blocks} colonne={pagina.colonne} />
+
+{/* Il doppio registro: la firma della pagina. Quello che legge una
+    persona sopra, quello che legge un crawler qui sotto — generato dagli
+    stessi campi, non scritto a mano. */}
+  {
+    mostraDoppio && (
+      <section class="doppio" id="macchina">
+        <div class="doppio-testa">
+          {doppio.etichetta && <span class="etichetta">{doppio.etichetta}</span>}
+          {doppio.testo && <p>{doppio.testo}</p>}
+        </div>
+
+        {pagina.geo.structured_summary && (
+          <div class="pannello-macchina">
+            <div class="pannello-barra">
+              <span class="punto" />
+              <span>structured_summary — {dominio}/{pagina.is_home ? '' : pagina.slug}</span>
+            </div>
+            <pre><code>{pagina.geo.structured_summary}</code></pre>
+          </div>
+        )}
+
+        {pagina.geo.key_facts.length > 0 && (
+          <div class="fatti">
+            <span class="etichetta">key_facts[]</span>
+            <ul>
+              {pagina.geo.key_facts.map((f: string) => <li>{f}</li>)}
+            </ul>
+          </div>
+        )}
+      </section>
+    )
+  }

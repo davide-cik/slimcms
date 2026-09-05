@@ -39,32 +39,4 @@ class SitePageController extends Controller
         return new PageResource($pagina);
     }
 
-    /**
-     * Dati minimi per generare sitemap.xml lato Astro: solo le pagine
-     * pubblicate e non escluse dai motori.
-     */
-    public function sitemap(Site $site): array
-    {
-        $pagine = Page::query()
-            ->where('status', 'published')
-            ->get()
-            ->reject(fn (Page $p) => (bool) ($p->seo['noindex'] ?? false))
-            ->map(fn (Page $p) => [
-                // Slash finale SEMPRE: Astro genera <slug>/index.html, quindi il
-                // server serve 200 solo sulla forma con slash e risponde 301
-                // sull'altra. Una sitemap che elenca URL che redirigono fa
-                // pagare un salto in piu' a ogni passaggio del crawler.
-                'loc' => 'https://' . $site->domain . ($p->is_home ? '/' : '/' . $p->slug . '/'),
-                'lastmod' => $p->updated_at?->toIso8601String(),
-                'changefreq' => $p->seo['sitemap_change_freq'] ?? 'weekly',
-                'priority' => $p->seo['sitemap_priority'] ?? ($p->is_home ? '1.0' : '0.7'),
-            ])
-            ->values();
-
-        return [
-            'site' => $site->domain,
-            'generated_at' => now()->toIso8601String(),
-            'urls' => $pagine,
-        ];
-    }
 }

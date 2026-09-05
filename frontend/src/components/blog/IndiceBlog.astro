@@ -1,0 +1,37 @@
+---
+import SchedaArticolo from './SchedaArticolo.astro';
+import type { Articolo } from '../../lib/api';
+
+interface Props {
+  articoli: Articolo[];
+  base: string;
+  titolo: string;
+  occhiello?: string;
+  introduzione?: string | null;
+}
+
+const { articoli, base, titolo, occhiello, introduzione } = Astro.props;
+---
+
+<section class="apertura">
+  {occhiello && <p class="occhiello">{occhiello}</p>}
+  <h1>{titolo}</h1>
+  {introduzione && <p class="sommario">{introduzione}</p>}
+</section>
+
+<section class="capacita">
+  <div class="elenco-articoli">
+    {articoli.map((a) => <SchedaArticolo articolo={a} base={base} />)}
+  </div>
+</section>
+
+<style>
+  /* Un elenco, non una griglia di riquadri: gli articoli hanno titoli di
+     lunghezza diversa e in griglia si allineerebbero male, lasciando buchi
+     che sembrano un errore. */
+  .elenco-articoli {
+    display: flex;
+    flex-direction: column;
+  }
+  .elenco-articoli :global(.scheda:first-child) { border-top: 0; padding-top: 0; }
+</style>

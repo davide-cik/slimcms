@@ -150,6 +150,19 @@ done < <(grep -rhoE 'src="/(media|[a-z0-9_-]+\.(svg|png|jpg|webp))[^"]*"' dist -
          | sed -E 's/^src="//; s/"$//' | sort -u)
 
 (( mancanti == 0 )) || errore "$mancanti immagini referenziate non esistono in dist/."
+# Le immagini Open Graph non compaiono come src= nell'HTML, quindi il
+# controllo qui sopra non le vede: un'anteprima social rotta passerebbe con
+# il deploy verde, e ce ne si accorgerebbe solo condividendo un link.
+og_mancanti=0
+while read -r assoluta; do
+  rel="${assoluta#https://*/}"
+  [[ -s "dist/${rel}" ]] || { echo "    og:image mancante: /${rel}"; og_mancanti=$((og_mancanti + 1)); }
+done < <(grep -rhoE '<meta property="og:image" content="[^"]+"' dist --include='*.html' \
+         | sed -E 's/.*content="//; s/"$//' | sort -u)
+
+(( og_mancanti == 0 )) || errore "$og_mancanti immagini Open Graph non esistono in dist/."
+echo "    open graph: tutte le anteprime presenti"
+
 echo "    immagini: tutte presenti"
 
 # Il .htaccess porta i reindirizzamenti e la pagina d'errore del sito. Se e'

@@ -24,6 +24,9 @@ class SiteResource extends JsonResource
             'og_config' => $this->og_config ?? [],
             'footer_config' => $this->footer_config ?? [],
             'layout_config' => $this->layout_config ?? [],
+            // Normalizzato qui: Astro non deve ripetere la stessa validazione
+            // per poi divergere alla prima modifica.
+            'base_blog' => $this->baseBlog(),
         ];
     }
 }

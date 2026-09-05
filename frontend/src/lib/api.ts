@@ -157,6 +157,8 @@ export interface Sito {
   og_config: Record<string, unknown>;
   footer_config: ConfigFooter;
   layout_config: ConfigLayout;
+  /** Il segmento sotto cui vive il blog, gia' normalizzato da Laravel. */
+  base_blog: string;
 }
 
 export async function sito(): Promise<Sito> {
@@ -171,10 +173,30 @@ export async function sito(): Promise<Sito> {
  * rileggono a ogni condivisione e devono trovarla sul dominio del sito, non
  * dietro un token dell'API.
  */
-export async function immagineOpenGraph(slug: string): Promise<ArrayBuffer> {
+/** L'immagine Open Graph del SITO, per le pagine che non sono un contenuto. */
+export async function immagineOpenGraphSito(): Promise<ArrayBuffer> {
   if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');
 
-  const percorso = `/og/${slug}.png`;
+  const risposta = await fetch(`${BASE}/sites/${SITE}/og.png`, {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+
+  if (!risposta.ok) {
+    throw new Error(`Immagine Open Graph del sito: l'API ha risposto ${risposta.status}.`);
+  }
+
+  return risposta.arrayBuffer();
+}
+
+export async function immagineOpenGraph(
+  slug: string,
+  tipo: 'pagina' | 'articolo' = 'pagina'
+): Promise<ArrayBuffer> {
+  if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');
+
+  // Il tipo disambigua: lo stesso slug puo' esistere sia come pagina sia
+  // come articolo, e senza questo l'API restituirebbe sempre la pagina.
+  const percorso = `/og/${slug}.png?tipo=${tipo}`;
   const risposta = await fetch(`${BASE}/sites/${SITE}${percorso}`, {
     headers: { Authorization: `Bearer ${TOKEN}` },
   });
@@ -248,7 +270,10 @@ export async function elencoMedia(): Promise<{ origine: string; percorso: string
     }
   };
 
-  cammina(await elencoPagine());
+  // Pagine E articoli: un articolo ha la copertina e puo' avere blocchi con
+  // immagini. Camminare solo le pagine lascerebbe quelle degli articoli a
+  // puntare a file mai scaricati — riquadri rotti su ogni articolo.
+  cammina(await Promise.all([elencoPagine(), elencoArticoli()]));
 
   return [...trovati.values()];
 }
@@ -262,6 +287,63 @@ export async function scaricaMedia(origine: string): Promise<ArrayBuffer> {
   }
 
   return risposta.arrayBuffer();
+}
+
+export interface Termine {
+  name: string;
+  slug: string;
+}
+
+export interface Articolo {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  featured_image: Media | null;
+  status: string;
+  published_at: string | null;
+  updated_at: string | null;
+  author?: { name: string | null };
+  categories?: Termine[];
+  tags?: Termine[];
+  blocks: Blocco[];
+  seo: Pagina['seo'];
+  geo: {
+    structured_summary: string | null;
+    key_facts: string[];
+    source_attribution: { author?: string | null; published_at: string | null; updated_at: string | null };
+  };
+  aeo: Pagina['aeo'];
+}
+
+/**
+ * Tutti gli articoli pubblicati, seguendo la paginazione fino in fondo.
+ *
+ * L'endpoint pagina a 20: fermarsi alla prima pagina vorrebbe dire costruire
+ * un sito a cui mancano articoli senza che niente lo segnali — il tipo di
+ * guasto che si scopre mesi dopo, quando qualcuno cerca un vecchio pezzo.
+ */
+export async function elencoArticoli(): Promise<Articolo[]> {
+  const tutti: Articolo[] = [];
+  let pagina = 1;
+
+  // Il tetto e' una difesa contro un `last_page` che non arriva mai: un ciclo
+  // infinito in fase di build bloccherebbe le pubblicazioni di tutti i siti.
+  for (let i = 0; i < 200; i++) {
+    const risposta = await chiama<{ data: Articolo[]; meta?: { last_page?: number } }>(
+      `/posts?per_page=50&page=${pagina}`
+    );
+
+    tutti.push(...risposta.data);
+
+    const ultima = risposta.meta?.last_page ?? pagina;
+
+    if (pagina >= ultima) break;
+
+    pagina++;
+  }
+
+  return tutti;
 }
 
 export async function elencoPagine(): Promise<Pagina[]> {

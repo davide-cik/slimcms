@@ -1,35 +1,43 @@
 ---
-import type { Pagina, Sito } from '../lib/api';
-import { grafoJsonLd } from '../lib/jsonld';
+import type { Sito } from '../lib/api';
 import Icona from '../components/Icona.astro';
 
+/**
+ * Cio' che il layout deve sapere di quello che sta rendendo.
+ *
+ * Prima prendeva una `Pagina` intera, e un articolo o un archivio non lo
+ * sono: gli si sarebbe passato un oggetto finto con un `is_home` inventato,
+ * e il canonico e il JSON-LD sarebbero usciti sbagliati senza che niente lo
+ * segnalasse. Qui c'e' solo cio' che serve, e chi rende costruisce il proprio
+ * grafo con la funzione giusta.
+ */
+export interface Documento {
+  /** Il percorso canonico, con lo slash finale: '/', '/chi-siamo/', '/blog/x/'. */
+  percorso: string;
+  titolo: string;
+  descrizione?: string | null;
+  ogTitolo?: string | null;
+  ogDescrizione?: string | null;
+  noindex?: boolean;
+  canonico?: string | null;
+  /** Il file OG del sito, senza dominio: /og/<slug>.png. */
+  og: string;
+  jsonld: Record<string, unknown>[];
+}
+
 interface Props {
-  pagina: Pagina;
+  documento: Documento;
   dominio: string;
   sito?: Sito;
 }
 
-const { pagina, dominio, sito } = Astro.props;
+const { documento, dominio, sito } = Astro.props;
 
-const editore = {
-  '@type': 'Organization',
-  name: 'Content is King Srl',
-  vatID: 'IT11732600967',
-  address: {
-    '@type': 'PostalAddress',
-    streetAddress: 'via Carducci 8',
-    postalCode: '20814',
-    addressLocality: 'Varedo',
-    addressRegion: 'MB',
-    addressCountry: 'IT',
-  },
-};
+const grafo = documento.jsonld;
+const canonico = documento.canonico ?? `https://${dominio}${documento.percorso}`;
 
-const grafo = grafoJsonLd(pagina, dominio, editore);
-const canonico = pagina.seo.canonical_url ?? `https://${dominio}${pagina.is_home ? '/' : `/${pagina.slug}/`}`;
-
-// L'immagine Open Graph e' un file del sito, generato in build da /og/<slug>.png.
-const immagineOg = `https://${dominio}/og/${pagina.slug}.png`;
+// L'immagine Open Graph e' un file del sito, generato in build.
+const immagineOg = `https://${dominio}${documento.og}`;
 const larghezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined)?.larghezza ?? 1200);
 const altezzaOg = Number((sito?.og_config as Record<string, unknown> | undefined)?.altezza ?? 1600);
 
@@ -110,14 +118,14 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
     {/* Favicon del sito: generata dalle iniziali, oppure il file che il
         cliente ha caricato. Ogni sito ha la sua. */}
     <link rel="icon" href={sito?.favicon_path ?? '/favicon.svg'} type="image/svg+xml" />
-    <title>{pagina.seo.meta_title}</title>
-    {pagina.seo.meta_description && <meta name="description" content={pagina.seo.meta_description} />}
+    <title>{documento.titolo}</title>
+    {documento.descrizione && <meta name="description" content={documento.descrizione} />}
     <link rel="canonical" href={canonico} />
-    {pagina.seo.noindex && <meta name="robots" content="noindex, nofollow" />}
+    {documento.noindex && <meta name="robots" content="noindex, nofollow" />}
 
     <meta property="og:type" content="website" />
-    <meta property="og:title" content={pagina.seo.og_title ?? pagina.seo.meta_title} />
-    {pagina.seo.og_description && <meta property="og:description" content={pagina.seo.og_description} />}
+    <meta property="og:title" content={documento.ogTitolo ?? documento.titolo} />
+    {documento.ogDescrizione && <meta property="og:description" content={documento.ogDescrizione} />}
     <meta property="og:url" content={canonico} />
 
     {/* Immagine generata dalla piattaforma e scritta come file del sito: i
@@ -127,7 +135,7 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
     <meta property="og:image" content={immagineOg} />
     <meta property="og:image:width" content={String(larghezzaOg)} />
     <meta property="og:image:height" content={String(altezzaOg)} />
-    {pagina.seo.meta_title && <meta property="og:image:alt" content={pagina.seo.meta_title} />}
+    <meta property="og:image:alt" content={documento.titolo} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={immagineOg} />

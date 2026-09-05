@@ -1,0 +1,47 @@
+---
+import type { Termine } from '../../lib/api';
+
+interface Props {
+  termini: Termine[];
+  base: string;
+  /** 'categoria' o 'tag': decide il segmento dell'archivio. */
+  tipo: 'categoria' | 'tag';
+  etichetta: string;
+}
+
+const { termini, base, tipo, etichetta } = Astro.props;
+---
+
+{termini.length > 0 && (
+  <div class="termini">
+    <span class="etichetta">{etichetta}</span>
+    <ul>
+      {termini.map((t) => (
+        <li><a href={`/${base}/${tipo}/${t.slug}/`}>{t.name}</a></li>
+      ))}
+    </ul>
+  </div>
+)}
+
+<style>
+  .termini { margin-bottom: 1.4rem; }
+  .termini ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.6rem 0 0;
+    padding: 0;
+  }
+  .termini a {
+    display: inline-block;
+    font-family: var(--display);
+    font-size: 0.85rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--riga);
+    border-radius: 2px;
+    color: var(--inchiostro-tenue);
+    text-decoration: none;
+  }
+  .termini a:hover { border-color: var(--segnale); color: var(--inchiostro); }
+</style>

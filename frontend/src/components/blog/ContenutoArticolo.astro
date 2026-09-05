@@ -1,0 +1,104 @@
+---
+import Blocchi from '../blocchi/Blocchi.astro';
+import ElencoTermini from './ElencoTermini.astro';
+import { percorsoMedia, type Articolo } from '../../lib/api';
+
+interface Props {
+  articolo: Articolo;
+  base: string;
+}
+
+const { articolo, base } = Astro.props;
+
+const iso = articolo.published_at ?? undefined;
+const leggibile = iso
+  ? new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+  : null;
+
+// Aggiornato dopo la pubblicazione: si dice, perche' su un articolo tecnico
+// e' un'informazione che cambia quanto ci si fida di quello che c'e' scritto.
+const aggiornato =
+  articolo.updated_at && iso && articolo.updated_at.slice(0, 10) !== iso.slice(0, 10)
+    ? new Date(articolo.updated_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+---
+
+<article>
+  <header class="apertura">
+    {(articolo.categories ?? []).length > 0 && (
+      <p class="occhiello">{(articolo.categories ?? []).map((c) => c.name).join(' · ')}</p>
+    )}
+
+    <h1>{articolo.title}</h1>
+
+    {articolo.excerpt && <p class="sommario">{articolo.excerpt}</p>}
+
+    <p class="firma-articolo">
+      {leggibile && <time datetime={iso}>{leggibile}</time>}
+      {articolo.author?.name && <span> · di {articolo.author.name}</span>}
+      {aggiornato && <span class="aggiornato"> · aggiornato il {aggiornato}</span>}
+    </p>
+  </header>
+
+  {articolo.featured_image && (
+    <figure class="copertina">
+      <img
+        src={percorsoMedia(articolo.featured_image)}
+        alt={articolo.featured_image.alt ?? ''}
+        width="1600"
+        height="900"
+      />
+      {articolo.featured_image.didascalia && (
+        <figcaption>{String(articolo.featured_image.didascalia)}</figcaption>
+      )}
+    </figure>
+  )}
+
+  {/* Gli articoli restano a una colonna: un testo lungo su tre colonne
+      obbliga a risalire con l'occhio a ogni colonna, ed e' il motivo per cui
+      i giornali le tengono strette e corte, non alte quanto la pagina. */}
+  <Blocchi blocchi={articolo.blocks} colonne={1} />
+
+  <footer class="chiusura piede-articolo">
+    <ElencoTermini termini={articolo.tags ?? []} base={base} tipo="tag" etichetta="Tag" />
+    <ElencoTermini termini={articolo.categories ?? []} base={base} tipo="categoria" etichetta="Categorie" />
+    <p><a class="bottone" href={`/${base}/`}>Tutti gli articoli</a></p>
+  </footer>
+</article>
+
+<style>
+  .firma-articolo {
+    margin: 1.8rem 0 0;
+    font-family: var(--display);
+    font-size: 0.9rem;
+    color: var(--inchiostro-tenue);
+  }
+  /* La data di aggiornamento e' un'informazione secondaria ma non da
+     nascondere: su un articolo tecnico cambia quanto ci si fida. */
+  .aggiornato { opacity: 0.75; }
+
+  .copertina {
+    max-width: var(--misura);
+    margin: 2.5rem auto 0;
+    padding: 0 1.5rem;
+  }
+  .copertina img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 3px;
+  }
+  .copertina figcaption {
+    margin-top: 0.6rem;
+    font-family: var(--display);
+    font-size: 0.82rem;
+    color: var(--inchiostro-tenue);
+  }
+
+  .piede-articolo {
+    border-top: 1px solid var(--riga);
+    padding-top: 2rem;
+    margin-top: 1rem;
+  }
+</style>

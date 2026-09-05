@@ -232,6 +232,37 @@ privi.
 succede dopo ogni `php artisan test`, che azzera il DB ma non il disco. Di default elenca
 soltanto; `--elimina` cancella davvero.
 
+## Blog
+
+Articoli, indice, archivi di categoria e di tag. Il segmento sotto cui vivono è
+**configurabile per sito** (`/blog/`, `/news/`, `/articoli/`): `Site::baseBlog()` lo
+normalizza e `SiteResource` lo espone come `base_blog` già pulito, perché compare in tre
+posti che devono concordare — sitemap, JSON-LD e rotte generate da Astro.
+
+Per questo il frontend ha **una sola rotta**, `src/pages/[...percorso].astro`, che smista
+su un discriminatore nelle props. Una cartella `src/pages/blog/` sarebbe una bugia il
+giorno in cui un cliente sceglie "news", e due rotte rest allo stesso livello sono
+ambigue per Astro. Se `base_blog` non arriva (backend più vecchio del frontend) la build
+**si ferma**: senza il controllo produceva `/undefined/<slug>/` — pagine valide, del peso
+giusto, a indirizzi inventati.
+
+Gli archivi si ricavano **dagli articoli**, non da un elenco di termini: un `Tag` resta in
+tabella quando l'ultimo articolo che lo usava torna bozza, e un archivio vuoto è una pagina
+sottile. Così esistono esattamente i termini presenti su un articolo pubblicato, e i
+collegamenti dentro gli articoli non possono puntare nel vuoto.
+
+`Base.astro` prende un `Documento` (percorso canonico, SEO, og, jsonld), **non** una
+`Pagina`: un articolo non è una pagina, e passarglielo avrebbe compilato senza errori
+producendo un `Article` senza autore né `datePublished`. Ogni tipo costruisce il proprio
+grafo — `grafoJsonLd`, `grafoArticoloJsonLd` (BlogPosting, autore, `articleSection`,
+`keywords`), `grafoArchivioJsonLd` (CollectionPage + ItemList).
+
+Le immagini Open Graph degli articoli stanno in `/og/articoli/<slug>.png`, separate da
+quelle delle pagine: lo stesso slug può esistere in **entrambe** le tabelle. Il tipo entra
+anche nella **chiave di cache** del backend — senza, due contenuti omonimi aggiornati nello
+stesso secondo si scambiavano l'immagine. Il gate di deploy verifica ogni `og:image`, che
+non compare come `src=` e sfuggiva al controllo delle immagini.
+
 ## Reindirizzamenti (301/302)
 
 Il sito pubblico è statico: un redirect non può essere una query. Le righe attive

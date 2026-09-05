@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import Base, { type Documento } from '../layouts/Base.astro';
 import { elencoPagine, sito, type Pagina, type Sito } from '../lib/api';
 
 /**
@@ -14,30 +14,21 @@ const [pagine, infoSito] = await Promise.all([elencoPagine(), sito()]);
 const dominio = import.meta.env.SLIMCMS_SITE ?? 'slimcms.it';
 
 const altre = pagine.filter((p: Pagina) => !p.is_home);
+const s = infoSito as Sito;
 
 // Una pagina d'errore non e' un contenuto: non deve finire nell'indice ne'
-// nella sitemap, e non ha un indirizzo canonico proprio.
-const finta: Pagina = {
-  ...(pagine.find((p: Pagina) => p.is_home) ?? pagine[0]),
-  title: 'Pagina non trovata',
-  slug: '404',
-  is_home: false,
-  colonne: 1,
-  blocks: [],
-  seo: {
-    meta_title: `Pagina non trovata — ${(infoSito as Sito).name}`,
-    meta_description: null,
-    canonical_url: `https://${dominio}/`,
-    noindex: true,
-    og_title: null,
-    og_description: null,
-    og_image: null,
-  },
-  geo: { structured_summary: null, key_facts: [], source_attribution: { published_at: null, updated_at: null } },
+// nella sitemap, e il canonico punta alla home, non a se stessa.
+const documento: Documento = {
+  percorso: '/404.html',
+  titolo: `Pagina non trovata — ${s.name}`,
+  noindex: true,
+  canonico: `https://${dominio}/`,
+  og: '/og/sito.png',
+  jsonld: [],
 };
 ---
 
-<Base pagina={finta} dominio={dominio} sito={infoSito as Sito}>
+<Base documento={documento} dominio={dominio} sito={s}>
   <section class="apertura">
     <p class="occhiello">Errore 404</p>
     <h1>Questa pagina non c'è</h1>
