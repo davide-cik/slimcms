@@ -59,9 +59,16 @@ const endpointCaptcha = `${base}/public/${dominio}/captcha`;
 const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
 ---
 
-<section class="modulo-contatto">
+{/*
+  La sezione e' `chiusura`, la stessa che usano gli altri blocchi del sito:
+  cosi' il modulo eredita misura, margini, spaziatura verticale e stile dei
+  titoli dal tema, e li segue anche quando il tema cambia. Inventando una
+  sezione propria — com'era — restava incollato a sinistra mentre tutto il
+  resto della pagina era centrato.
+*/}
+<section class="chiusura modulo-contatto">
   {titolo && <h2>{titolo}</h2>}
-  {testo && <p class="modulo-intro">{testo}</p>}
+  {testo && <p>{testo}</p>}
 
   <form
     class="modulo"
@@ -309,31 +316,63 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
 </script>
 
 <style>
-  .modulo-contatto {
-    max-width: 34rem;
+  /* Solo l'interno del modulo. Misura, margini e spaziatura della sezione
+     vengono da `.chiusura` in Base.astro, che e' il contenitore di tutti i
+     blocchi: qui non si ricopiano, altrimenti divergono al primo tema nuovo. */
+
+  /* `.chiusura` porta una riga sopra, che separa il modulo dal contenuto
+     precedente. Subito sotto l'apertura di una pagina non separa niente: e'
+     solo una riga appiccicata al titolo. */
+  :global(.apertura + .modulo-contatto) {
+    border-top: 0;
+    padding-top: 0;
   }
 
-  .modulo-intro {
-    margin-bottom: 1.5rem;
+  .modulo {
+    /* I campi non devono essere larghi quanto un paragrafo: una riga di
+       input lunga mezzo schermo si legge peggio, non meglio. */
+    max-width: 34rem;
+    margin-top: 2rem;
   }
 
   .campo {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.1rem;
   }
 
   .campo label {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-family: var(--mono, inherit);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--inchiostro-tenue, inherit);
   }
 
-  /* La classe che lega il modulo al suo script: senza una regola propria il
-     gate del CSS la segnala come classe senza stile, ed e' giusto che lo
-     faccia — non sa distinguere un gancio da una dimenticanza. */
-  .modulo {
-    display: block;
+  .campo input,
+  .campo select,
+  .campo textarea {
+    font: inherit;
+    width: 100%;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--riga, rgba(0, 0, 0, 0.25));
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+  }
+
+  .campo textarea {
+    resize: vertical;
+    min-height: 8rem;
+  }
+
+  .campo input:focus-visible,
+  .campo select:focus-visible,
+  .campo textarea:focus-visible {
+    outline: 2px solid var(--segnale, currentColor);
+    outline-offset: 1px;
+    border-color: transparent;
   }
 
   /* Il consenso e' una casella con l'etichetta accanto, non sopra. */
@@ -341,12 +380,16 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
     display: flex;
     align-items: flex-start;
     gap: 0.55rem;
-    font-weight: 400;
-    line-height: 1.4;
+    font-family: inherit;
+    font-size: 0.95rem;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.45;
   }
 
   .campo-consenso input {
-    margin-top: 0.2rem;
+    width: auto;
+    margin-top: 0.15rem;
     flex: 0 0 auto;
   }
 
@@ -361,29 +404,10 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   .captcha-domanda {
-    font-weight: 600;
-  }
-
-  .campo input,
-  .campo select,
-  .campo textarea {
-    font: inherit;
-    padding: 0.6rem 0.7rem;
-    border: 1px solid rgba(0, 0, 0, 0.25);
-    border-radius: 6px;
-    background: #fff;
-    color: inherit;
-  }
-
-  .campo textarea {
-    resize: vertical;
-  }
-
-  .campo input:focus-visible,
-  .campo select:focus-visible,
-  .campo textarea:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 1px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   /* L'esca non deve essere raggiungibile ne' visibile, ma deve restare nel
@@ -396,22 +420,26 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
     overflow: hidden;
   }
 
-  .modulo-contatto button {
+  /* Lo stesso pulsante degli altri blocchi: `bottone primario` e' definito
+     nel tema, e usarlo qui vuol dire che il modulo non ha un pulsante suo
+     che invecchia per conto proprio. */
+  .modulo button {
     font: inherit;
+    font-family: var(--display, inherit);
     font-weight: 600;
-    padding: 0.65rem 1.4rem;
-    border: 1px solid currentColor;
-    border-radius: 6px;
-    background: transparent;
-    color: inherit;
+    padding: 0.8rem 1.6rem;
+    border: 0;
+    border-radius: 4px;
+    background: var(--segnale, #0f6b4a);
+    color: var(--fondo, #fff);
     cursor: pointer;
   }
 
-  .modulo-contatto button:hover:not([disabled]) {
-    background: rgba(0, 0, 0, 0.06);
+  .modulo button:hover:not([disabled]) {
+    filter: brightness(1.1);
   }
 
-  .modulo-contatto button[disabled] {
+  .modulo button[disabled] {
     opacity: 0.6;
     cursor: progress;
   }
@@ -421,17 +449,18 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   .modulo-esito {
-    margin-top: 1rem;
-    padding: 0.7rem 0.9rem;
-    border-radius: 6px;
-    font-size: 0.95rem;
+    margin-top: 1.2rem;
+    padding: 0.8rem 1rem;
+    border-radius: 4px;
+    font-size: 0.98rem;
+    border: 1px solid var(--riga, rgba(0, 0, 0, 0.15));
   }
 
   .modulo-esito.ok {
-    background: rgba(15, 107, 74, 0.12);
+    border-color: var(--segnale, #0f6b4a);
   }
 
   .modulo-esito.errore {
-    background: rgba(160, 30, 30, 0.12);
+    border-color: #a01e1e;
   }
 </style>

@@ -140,11 +140,13 @@
             @break
 
         @case('modulo_contatto')
-            <section class="modulo-contatto">
+            {{-- `chiusura` come nel sito: la sezione da' misura e margini, il
+                 modulo solo il proprio interno. --}}
+            <section class="chiusura modulo-contatto">
                 @if (filled($b['titolo'] ?? null))<h2>{{ $b['titolo'] }}</h2>@endif
-                @if (filled($b['testo'] ?? null))<p class="modulo-intro">{{ $b['testo'] }}</p>@endif
+                @if (filled($b['testo'] ?? null))<p>{{ $b['testo'] }}</p>@endif
                 {{-- Inerte: un'anteprima non deve poter mandare un messaggio vero. --}}
-                <form onsubmit="return false">
+                <form class="modulo" onsubmit="return false">
                     <div class="campo"><label>Nome</label><input type="text" disabled></div>
                     <div class="campo"><label>Email</label><input type="email" disabled></div>
                     <div class="campo"><label>Messaggio</label><textarea rows="4" disabled></textarea></div>
