@@ -569,23 +569,36 @@ class SiteResource extends Resource
                 // Non e' un accesso diretto del super-admin: vedi
                 // ImpersonazioneController per il perche'.
                 Action::make('entra')
-                    ->label('Apri il pannello contenuti')
+                    // Con un redattore solo l'etichetta dice gia' di chi
+                    // prenderai l'identita': non e' un dettaglio estetico,
+                    // e' l'unica informazione che conta prima del clic.
+                    ->label(fn (Site $record): string => $record->users->count() === 1
+                        ? 'Apri come ' . $record->users->first()->name
+                        : 'Apri il pannello contenuti')
                     ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                     ->color('primary')
                     ->visible(fn (): bool => (bool) auth('manage')->user()?->isSuperAdmin())
-                    ->schema(fn (Site $record): array => [
+                    ->schema(fn (Site $record): array => $record->users->count() < 2 ? [] : [
                         Select::make('user_id')
                             ->label('Entra come')
-                            ->options(fn (): array => $record->users()->pluck('name', 'users.id')->all())
+                            ->options(fn (): array => $record->users->pluck('name', 'id')->all())
                             ->required()
                             ->helperText('Entrerai come questo redattore. L\'accesso resta registrato.'),
                     ])
-                    ->modalHeading('Aprire il pannello contenuti di questo sito?')
+                    // Una modale che chiede di scegliere fra una cosa sola
+                    // non e' una conferma, e' un clic in piu': con un solo
+                    // redattore si entra diretti. L'accesso resta comunque
+                    // registrato in `impersonazioni` e revocabile.
+                    ->modalHidden(fn (Site $record): bool => $record->users->count() < 2)
+                    ->modalHeading('Chi vuoi impersonare su questo sito?')
                     ->modalDescription('Le modifiche che farai risulteranno fatte dal redattore scelto, ma resta traccia che dietro c\'eri tu.')
                     ->modalSubmitActionLabel('Entra')
-                    ->disabled(fn (Site $record): bool => $record->users()->doesntExist())
+                    ->disabled(fn (Site $record): bool => $record->users->isEmpty())
                     ->action(function (Site $record, array $data) {
-                        $utente = User::withoutSitePivotScope()->findOrFail($data['user_id']);
+                        // Senza modale non arriva nessun user_id: l'unico
+                        // redattore del sito e' la scelta implicita.
+                        $utente = User::withoutSitePivotScope()
+                            ->findOrFail($data['user_id'] ?? $record->users->first()?->getKey());
 
                         $imp = Impersonazione::apri(
                             auth('manage')->user(),
