@@ -160,10 +160,22 @@ class GeneratoreFavicon
     }
 
     /**
-     * Il file caricato dal cliente, se c'e' ed e' ancora sul disco.
+     * Il file caricato dal cliente, se c'e', e' ancora sul disco ed e'
+     * un'immagine raster vera.
      *
-     * Sta su un disco privato: non e' raggiungibile da fuori e non lo deve
-     * essere. Passa di qui, viene convertito, ed esce come file del sito.
+     * **Gli SVG caricati non passano di qui, e non e' pedanteria.** Un SVG e'
+     * un documento, non un'immagine: puo' portare `<image
+     * xlink:href="file:///...">`, e il renderer interno di ImageMagick quel
+     * riferimento lo segue. Verificato su questa macchina: un SVG caricato
+     * come favicon di un cliente ha letto un PNG dei media di **un altro
+     * cliente** e l'ha pubblicato dentro il suo `/favicon.ico`. E' la regola
+     * numero uno di CLAUDE.md, violata da un campo di upload.
+     *
+     * Scrivere un ripulitore di SVG sarebbe la soluzione generale, ed e'
+     * anche il genere di codice che si sbaglia in silenzio. Una favicon non
+     * ha bisogno di vettoriale caricato: quella vettoriale la generiamo noi.
+     * Quindi qui entrano solo PNG, ICO, JPEG e WebP, riconosciuti dal
+     * **contenuto** e non dall'estensione ne' dal mime dichiarato.
      */
     public function fileCaricato(Site $site): ?string
     {
@@ -173,24 +185,62 @@ class GeneratoreFavicon
 
         $disco = \Illuminate\Support\Facades\Storage::disk(config('filament.default_filesystem_disk', 'local'));
 
-        // Un percorso rimasto nel database dopo che il file e' sparito non e'
-        // un motivo per rispondere 500: si torna a quella generata, che c'e'
-        // sempre.
-        return $disco->exists($site->favicon_path) ? $disco->get($site->favicon_path) : null;
-    }
+        try {
+            // Un percorso rimasto nel database dopo che il file e' sparito
+            // non e' un motivo per rispondere 500: si torna a quella
+            // generata, che c'e' sempre. Lo stesso vale per un percorso
+            // storto, che Flysystem rifiuta con un'eccezione.
+            if (! $disco->exists($site->favicon_path)) {
+                return null;
+            }
 
-    /** L'SVG da pubblicare, o null se il cliente ha caricato un'immagine non vettoriale. */
-    public function svgPubblicabile(Site $site): ?string
-    {
-        if (blank($site->favicon_path)) {
-            return $this->svg($site);
+            $byte = $disco->get($site->favicon_path);
+        } catch (\Throwable) {
+            return null;
         }
 
-        // Un PNG non diventa un SVG: in quel caso il sito dichiara solo
-        // l'ICO. Meglio una sola icona giusta che due che si contraddicono.
-        return str_ends_with(strtolower($site->favicon_path), '.svg')
-            ? $this->fileCaricato($site)
-            : null;
+        return self::eRasterRiconosciuto($byte) ? $byte : null;
+    }
+
+    /**
+     * Riconosce un'immagine raster dai primi byte.
+     *
+     * Dal contenuto e non dal nome: l'estensione la sceglie chi carica, e il
+     * mime lo dichiara il browser. Qui l'unica cosa che conta e' cosa
+     * finisce dentro il rasterizzatore.
+     */
+    private static function eRasterRiconosciuto(string $byte): bool
+    {
+        $firme = [
+            "\x89PNG\r\n\x1a\n",   // PNG
+            "\x00\x00\x01\x00",     // ICO
+            "\xff\xd8\xff",          // JPEG
+            'RIFF',                   // WebP (RIFF....WEBP)
+        ];
+
+        foreach ($firme as $firma) {
+            if (str_starts_with($byte, $firma)) {
+                return $firma !== 'RIFF' || str_starts_with(substr($byte, 8), 'WEBP');
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * L'SVG da pubblicare, o null se il cliente ha caricato un'immagine.
+     *
+     * Quando c'e' un file caricato il sito dichiara **solo** l'ICO. Non si
+     * ripubblica l'SVG del cliente per due motivi, e nessuno dei due e'
+     * estetico: verrebbe servito dall'origine del sito, dove un `<script>`
+     * dentro l'SVG e' codice che gira in quell'origine; e un SVG che noi
+     * ripubblichiamo tale e quale e' un documento di cui non sappiamo niente.
+     * Un PNG non diventa un SVG, e due icone che si contraddicono sono
+     * peggio di una sola.
+     */
+    public function svgPubblicabile(Site $site): ?string
+    {
+        return blank($site->favicon_path) ? $this->svg($site) : null;
     }
 
     /** Accetta solo colori esadecimali: qualunque altra cosa finirebbe dentro l'SVG. */

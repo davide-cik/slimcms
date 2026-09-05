@@ -82,10 +82,16 @@ class ImpostazioniSito extends EditTenantProfile
                         ->image()
                         ->imageEditor()
                         ->maxSize(512)
-                        ->acceptedFileTypes(['image/svg+xml', 'image/png', 'image/x-icon'])
+                        // Niente SVG. Un SVG e' un documento, non
+                        // un'immagine: puo' portare riferimenti a file del
+                        // server (`<image xlink:href="text:...">`), e il
+                        // rasterizzatore quei riferimenti li segue. Vedi
+                        // GeneratoreFavicon::fileCaricato(). Il vettoriale
+                        // per la favicon lo generiamo noi.
+                        ->acceptedFileTypes(['image/png', 'image/x-icon', 'image/jpeg', 'image/webp'])
                         ->directory('favicon')
                         ->visible(fn (Get $get) => $get('favicon_modo') === 'caricata')
-                        ->helperText('SVG, PNG o ICO, massimo 512 KB. Consigliato quadrato, almeno 128x128. '
+                        ->helperText('PNG, ICO, JPEG o WebP, massimo 512 KB. Consigliato quadrato, almeno 128x128. '
                             . 'Il file resta qui: il sito pubblica una copia in /favicon.ico, generata da questa immagine.')
                         // Passando a "generata" il file va tolto, altrimenti
                         // resterebbe e continuerebbe ad avere la precedenza.

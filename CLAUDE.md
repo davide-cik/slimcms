@@ -263,6 +263,44 @@ anche nella **chiave di cache** del backend — senza, due contenuti omonimi agg
 stesso secondo si scambiavano l'immagine. Il gate di deploy verifica ogni `og:image`, che
 non compare come `src=` e sfuggiva al controllo delle immagini.
 
+## Favicon
+
+Ogni sito pubblica `/favicon.ico` — un ICO vero con dentro 16, 32 e 48 — e, quando l'icona
+e' quella generata dalle iniziali, anche `/favicon.svg`. L'ICO non compare in nessun href
+per volere del browser: lo chiede da solo alla radice del dominio, e con lui ogni crawler.
+Finche' non c'era, ogni visita produceva un 404 — i primi che il monitoraggio dei 404 ha
+registrato su slimcms.it.
+
+### Un SVG caricato non e' un'immagine: e' un documento
+
+**Non si accettano SVG in caricamento, e non e' pedanteria.** Un SVG puo' portare
+`<image xlink:href="text:/percorso/di/un/file">`, e il renderer interno di ImageMagick quel
+riferimento lo segue e **disegna il contenuto del file dentro l'immagine**. L'immagine e'
+la favicon, che finisce pubblicata sul sito: leggibile da chiunque, senza token.
+
+Riprodotto su questa macchina durante una revisione di sicurezza, in due varianti: con
+`file://` usciva il PNG dei media di **un altro cliente** — la regola numero uno di questo
+file, violata da un campo di upload — e con `text:` il contenuto di un file di testo
+qualsiasi leggibile dal processo, `.env` compreso.
+
+La `policy.xml` di ImageMagick su questo host blocca `URL`, `HTTP`, `HTTPS`, `@*` e i coder
+PostScript/PDF, ma **non** `text:`, `label:` e `caption:`. Appoggiarsi alla policy dell'host
+e' comunque fragile: il controllo sta in `GeneratoreFavicon::fileCaricato()`, che accetta
+solo PNG, ICO, JPEG e WebP **riconosciuti dai primi byte** — non dall'estensione, non dal
+mime dichiarato, che li sceglie chi carica.
+
+Un ripulitore di SVG sarebbe la soluzione generale ed e' anche il genere di codice che si
+sbaglia in silenzio. Una favicon non ha bisogno di vettoriale caricato: quello lo generiamo
+noi.
+
+Per lo stesso motivo l'SVG del cliente non viene **ripubblicato**: verrebbe servito
+dall'origine del suo sito, dove un `<script>` dentro l'SVG e' codice che gira in
+quell'origine. Con un file caricato il sito dichiara solo l'ICO.
+
+`favicon_path` e' un percorso su un disco **privato** del backend, non un indirizzo: non
+esce dall'API. Usato com'era, come href nell'HTML del sito statico, dava un 404 sicuro — ed
+e' il motivo per cui "Carica un file" non ha mai funzionato prima.
+
 ## Reindirizzamenti (301/302)
 
 Il sito pubblico è statico: un redirect non può essere una query. Le righe attive
