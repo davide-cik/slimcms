@@ -402,6 +402,64 @@ così passa sempre, anche togliendo il controllo dal middleware. Usare
 `Sanctum::actingAs($user, ['site:<id>'])`, e verificare che il test fallisca davvero
 rompendo il middleware.
 
+## Statistiche di accesso
+
+Chi visita il sito, giorno per giorno, diviso in quattro: **persone**, **motori di
+ricerca**, **bot AI**, **altri bot e scanner**.
+
+**Non si leggono i log di Apache.** Sono di root, la loro rotazione e' fuori dal nostro
+controllo, e un monitor che dipende di un file che qualcun altro ruota e' un monitor che un
+giorno smette di funzionare senza dirlo — lo stesso ragionamento del registro dei 404.
+
+Il sito e' statico, quindi una visita non tocca Laravel e non lascia traccia da sola.
+L'unico modo di vederla e' che il client chieda **qualcosa servito da nostro codice**: ogni
+pagina cita `slimcms-vista.php`, generato nel `dist/` come il gestore dei 404, che annota
+in `<dominio>/private/slimcms-viste.jsonl`. `scripts/importa-viste.sh` (cron, ogni cinque
+minuti) porta le righe nel database gia' aggregate per giorno.
+
+### Perche' un'immagine e non solo uno script
+
+Misurato sul traffico vero di slimcms.it prima di decidere: **ClaudeBot scarica logo, font
+e favicon**. Con il solo JavaScript i bot dei modelli generativi sarebbero invisibili —
+non eseguono JS — mentre un pixel li prende, con tutto lo user-agent.
+
+Lo script manda un **secondo evento** (`e=j`), che non e' una visita ma la conferma che
+quel client esegue JavaScript. Contarlo come visita raddoppierebbe ogni persona, perche'
+una persona manda entrambi. Serve a distinguere una persona da uno scanner che si dichiara
+Chrome e non esegue mai niente: sul traffico reale erano 58 richieste su 575.
+
+Resta fuori solo chi scarica l'HTML e **nient'altro**: sul campione reale il 34% delle
+richieste di pagina, e sono tutti scanner (`l9scan`, `CT-WP-Scanner`, `Go-http-client`),
+non bot AI. Quelli cercano quasi sempre indirizzi inesistenti, quindi finiscono comunque
+nel monitoraggio dei 404.
+
+### Niente cookie, nessun IP conservato
+
+Le persone distinte si contano con un'impronta `sha256(sale + ip + user agent)` dove il
+sale cambia ogni giorno e **non viene conservato**: si sa quanti sono oggi, non chi erano
+ieri, e l'impronta non e' ricostruibile nemmeno da noi. L'IP arriva solo fino
+all'importazione e non viene mai scritto.
+
+Solo le persone entrano nel conteggio dei distinti: un crawler che passa da mille indirizzi
+diversi non e' mille visitatori, e sommarlo renderebbe il numero inutile.
+
+### Le firme stanno in configurazione
+
+`config/slimcms.php → agenti` elenca le firme per categoria e i nomi leggibili. Stanno li'
+e non in `ClassificatoreAgente` perche' "altri bot e scanner" e' una lista che cresce ogni
+mese.
+
+L'**ordine dei controlli** e' la parte che conta: quasi tutti i bot si dichiarano
+`Mozilla/5.0` per non essere bloccati, quindi si cerca prima cio' che e' riconoscibile — AI,
+motori, strumenti — e solo alla fine si accetta che sia un browser. Al contrario finirebbero
+tutti fra le persone.
+
+### Trappola: le proprieta' pubbliche di una pagina Livewire coprono i dati della vista
+
+`Statistiche` esponeva `public int $giorni` e passava alla vista una serie chiamata
+`giorni`: la proprieta' vinceva e il grafico riceveva un intero al posto dell'array. La
+proprieta' si chiama `periodo`.
+
 ## Monitoraggio dei 404
 
 Un 404 su un sito statico **non lascia traccia in Laravel**: nessuna richiesta lo

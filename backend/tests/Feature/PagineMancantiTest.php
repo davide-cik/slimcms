@@ -201,4 +201,30 @@ class PagineMancantiTest extends TestCase
         // redirect venisse tolto si rivede la storia.
         $this->assertTrue(PaginaMancante::first()->ignorata);
     }
+
+    /**
+     * "Ignora" tiene la riga e smette di segnalarla; "Elimina" la toglie.
+     *
+     * Servono tutte e due: un indirizzo che uno scanner ha provato una volta
+     * sola e' rumore, e un elenco pieno di rumore diventa un elenco che non
+     * si guarda piu'.
+     */
+    public function test_una_riga_si_puo_eliminare(): void
+    {
+        $this->annota([['p' => '/rumore', 'r' => 'https://c.test/x/', 'q' => '2026-09-04T20:10:00+00:00']]);
+        $this->artisan('slimcms:importa-404')->assertSuccessful();
+
+        $redattore = User::withoutSitePivotScope()->create(['name' => 'R', 'email' => 'r@r.it', 'password' => bcrypt('x')]);
+        $redattore->sites()->attach($this->sito, ['role' => 'editor']);
+        $this->actingAs($redattore);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($this->sito, isQuiet: true);
+
+        $riga = PaginaMancante::first();
+
+        Livewire::test(ListPagineMancanti::class)
+            ->callAction(TestAction::make('delete')->table($riga));
+
+        $this->assertDatabaseMissing('pagine_mancanti', ['id' => $riga->id]);
+    }
 }

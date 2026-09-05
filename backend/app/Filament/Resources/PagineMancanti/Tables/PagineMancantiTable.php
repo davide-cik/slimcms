@@ -6,6 +6,8 @@ use App\Models\Redirect;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -93,9 +95,25 @@ class PagineMancantiTable
                     ->color('gray')
                     ->visible(fn ($record): bool => ! $record->ignorata)
                     ->action(fn ($record) => $record->update(['ignorata' => true])),
+
+                // "Ignora" tiene la riga e smette di segnalarla; "Elimina" la
+                // toglie del tutto. Servono tutte e due: un collegamento rotto
+                // che si e' deciso di lasciare com'e' va ricordato, ma un
+                // indirizzo che uno scanner ha provato una volta sola e' solo
+                // rumore, e un elenco pieno di rumore diventa un elenco che
+                // non si guarda piu'. Se qualcuno ci finisce di nuovo, la riga
+                // torna: il conteggio riparte da zero, che e' l'informazione
+                // giusta.
+                DeleteAction::make()
+                    ->label('Elimina')
+                    ->modalHeading('Eliminare questo indirizzo dall\'elenco?')
+                    ->modalDescription('Se qualcuno ci finisce di nuovo, ricompare come nuovo.'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->label('Elimina'),
+
                     BulkAction::make('ignora')
                         ->label('Ignora')
                         ->icon('heroicon-o-eye-slash')

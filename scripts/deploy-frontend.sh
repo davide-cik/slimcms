@@ -165,6 +165,15 @@ echo "    open graph: tutte le anteprime presenti"
 
 echo "    immagini: tutte presenti"
 
+# Il contatore delle visite: se manca il file o la pagina non lo cita, le
+# statistiche restano a zero e nessuno se ne accorge finche' non le guarda.
+[[ -s dist/slimcms-vista.php ]] || errore "dist/slimcms-vista.php assente: nessuna visita verrebbe contata."
+grep -q 'slimcms-viste.jsonl' dist/slimcms-vista.php \
+  || errore "dist/slimcms-vista.php non scrive nel registro: contenuto inatteso."
+grep -rql 'slimcms-vista.php' dist --include='*.html' \
+  || errore "nessuna pagina cita il contatore delle visite."
+echo "    statistiche: contatore presente e citato da $(grep -rl 'slimcms-vista.php' dist --include='*.html' | wc -l) pagine"
+
 # La ricerca gira nel browser su questo file: se manca, il campo di ricerca
 # c'e' e non trova mai niente — un guasto che si vede solo provando a cercare.
 [[ -s dist/ricerca-indice.json ]] || errore "dist/ricerca-indice.json assente: la ricerca del sito non funzionerebbe."

@@ -84,4 +84,99 @@ return [
         '/home/' . env('SLIMCMS_UTENTE_HOSTING', 'claudio') . '/web/{dominio}/private/slimcms-404.jsonl'
     ),
 
+    /*
+    | Dove il contatore delle visite annota, sul dominio di ogni sito. Stessa
+    | cartella privata del registro dei 404: fuori dalla document root, quindi
+    | non leggibile dal web e non cancellata da `rsync --delete`.
+    */
+    'registro_viste' => env(
+        'SLIMCMS_REGISTRO_VISTE',
+        '/home/' . env('SLIMCMS_UTENTE_HOSTING', 'claudio') . '/web/{dominio}/private/slimcms-viste.jsonl'
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Riconoscimento degli agenti
+    |--------------------------------------------------------------------------
+    |
+    | Le firme cercate dentro lo user-agent, in minuscolo. Stanno qui e non
+    | nel codice perche' "altri bot e scanner" e' una lista che cresce ogni
+    | mese: aggiungerne una non deve voler dire toccare una classe.
+    |
+    | L'ordine in cui vengono provate lo decide ClassificatoreAgente: prima
+    | ai, poi motore, poi bot, e solo alla fine "sembra un browser". Quasi
+    | tutti i bot si dichiarano Mozilla/5.0 per non essere bloccati.
+    */
+    'agenti' => [
+
+        // I crawler dei modelli generativi. Distinguerli dai motori non e'
+        // pedanteria: chi scrive contenuti vuole sapere se le sue pagine
+        // finiscono in un indice o in un corpus di addestramento.
+        'ai' => [
+            'gptbot', 'oai-searchbot', 'chatgpt-user', 'claudebot', 'claude-web',
+            'anthropic-ai', 'perplexitybot', 'perplexity-user', 'ccbot',
+            'google-extended', 'bytespider', 'amazonbot', 'meta-externalagent',
+            'applebot-extended', 'cohere-ai', 'diffbot', 'imagesiftbot',
+            'youbot', 'timpibot', 'omgili', 'facebookbot',
+        ],
+
+        // I motori di ricerca veri e propri, quelli che portano visite.
+        'motore' => [
+            'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider',
+            'yandexbot', 'applebot', 'sogou', 'exabot', 'seznambot',
+            'petalbot', 'mojeekbot', 'qwantify',
+        ],
+
+        // Tutto il resto che non e' una persona: strumenti, librerie,
+        // monitoraggi, scanner di vulnerabilita', anteprime dei social.
+        'bot' => [
+            'curl/', 'wget', 'python-requests', 'python-urllib', 'go-http-client',
+            'java/', 'okhttp', 'axios', 'node-fetch', 'guzzlehttp', 'libwww-perl',
+            'headlesschrome', 'phantomjs', 'puppeteer', 'playwright',
+            'l9scan', 'leakix', 'zgrab', 'masscan', 'nmap', 'nuclei', 'sqlmap',
+            'wpscan', 'wp-scanner', 'censys', 'shodan', 'internetmeasurement',
+            'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'blexbot',
+            'dataforseobot', 'serpstatbot', 'barkrowler',
+            'uptimerobot', 'pingdom', 'statuscake', 'site24x7',
+            'twitterbot', 'linkedinbot', 'whatsapp', 'telegrambot', 'slackbot',
+            'discordbot', 'embedly', 'skypeuripreview', 'bot', 'crawler',
+            'spider', 'scraper',
+        ],
+
+        // Da user-agent a nome leggibile. La prima firma che corrisponde
+        // vince, quindi le piu' specifiche vanno prima: "Edg/" contiene
+        // "Chrome" nel proprio user-agent.
+        'nomi' => [
+            'GPTBot' => 'GPTBot (OpenAI)',
+            'OAI-SearchBot' => 'OAI-SearchBot (OpenAI)',
+            'ChatGPT-User' => 'ChatGPT (browsing)',
+            'ClaudeBot' => 'ClaudeBot (Anthropic)',
+            'anthropic-ai' => 'Anthropic',
+            'PerplexityBot' => 'PerplexityBot',
+            'CCBot' => 'CCBot (Common Crawl)',
+            'Google-Extended' => 'Google-Extended',
+            'Bytespider' => 'Bytespider (ByteDance)',
+            'Amazonbot' => 'Amazonbot',
+            'Meta-ExternalAgent' => 'Meta',
+            'Googlebot' => 'Googlebot',
+            'bingbot' => 'Bingbot',
+            'DuckDuckBot' => 'DuckDuckBot',
+            'YandexBot' => 'YandexBot',
+            'Applebot' => 'Applebot',
+            'AhrefsBot' => 'AhrefsBot',
+            'SemrushBot' => 'SemrushBot',
+            'l9scan' => 'LeakIX (scanner)',
+            'CT-WP-Scanner' => 'Scanner WordPress',
+            'curl/' => 'curl',
+            'Wget' => 'wget',
+            'python-requests' => 'python-requests',
+            'Go-http-client' => 'Go http client',
+            'Edg/' => 'Edge',
+            'OPR/' => 'Opera',
+            'Chrome/' => 'Chrome',
+            'Firefox/' => 'Firefox',
+            'Safari/' => 'Safari',
+        ],
+    ],
+
 ];

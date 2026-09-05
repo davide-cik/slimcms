@@ -911,5 +911,43 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
         .pie-colonne { grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
       }
     </style>
+
+    {/*
+      Il contatore delle visite.
+
+      Un'immagine e non solo uno script: il sito e' statico, quindi una
+      visita non lascia traccia da nessuna parte, e l'unico modo di vederla
+      senza leggere i log del server e' che il client chieda qualcosa servito
+      da nostro codice. Verificato sul traffico vero di slimcms.it: ClaudeBot
+      scarica logo, font e favicon, quindi un pixel lo prende — con il solo
+      JavaScript i bot AI sarebbero invisibili.
+
+      Lo script manda un SECONDO evento, che non e' una visita: e' la
+      conferma che quel client esegue JavaScript. Serve a distinguere una
+      persona da uno scanner che si dichiara Chrome e non esegue mai niente —
+      sul traffico reale di slimcms.it sono 58 richieste su 575.
+
+      Niente cookie e nessun indirizzo IP conservato: l'importazione lo usa
+      per un'impronta con un sale che cambia ogni giorno, e poi lo butta.
+    */}
+    <img
+      src={`/slimcms-vista.php?p=${encodeURIComponent(documento.percorso)}`}
+      alt=""
+      width="1"
+      height="1"
+      loading="eager"
+      decoding="async"
+      style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+    />
+    <script is:inline>
+      (function () {
+        try {
+          var p = encodeURIComponent(window.location.pathname);
+          new Image().src = '/slimcms-vista.php?e=j&p=' + p;
+        } catch (e) {
+          /* un contatore non deve mai rompere una pagina */
+        }
+      })();
+    </script>
   </body>
 </html>
