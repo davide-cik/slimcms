@@ -5,14 +5,18 @@ import { sito } from '../lib/api';
  * Favicon del sito, generata in fase di build dai dati dell'API.
  *
  * Non e' un file fisso in public/: ogni sito servito dalla piattaforma ha la
- * propria, con le proprie iniziali e i propri colori. Se il cliente ne ha
- * caricata una, l'API restituisce comunque un SVG coerente e il file caricato
- * viene esposto a parte come favicon_path.
+ * propria, con le proprie iniziali e i propri colori.
+ *
+ * Puo' non esserci: se il cliente ha caricato un PNG, `favicon_svg` e' null,
+ * perche' un PNG non diventa un SVG e due icone che si contraddicono sono
+ * peggio di una sola. In quel caso la rotta scrive un file vuoto e
+ * l'integrazione `slimcms-favicon` lo toglie dal `dist/` a fine build —
+ * Astro non sa saltare una rotta statica, ma sa cosa ha scritto.
  */
 export const GET: APIRoute = async () => {
   const s = await sito();
 
-  return new Response(s.favicon_svg, {
+  return new Response(s.favicon_svg ?? '', {
     headers: {
       'Content-Type': 'image/svg+xml',
       // Il nome del file non cambia mai, quindi non si puo' mettere in cache

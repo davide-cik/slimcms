@@ -6,6 +6,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use App\Filament\Pages\Tenancy\ImpostazioniSito;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -55,6 +56,10 @@ class AdminPanelProvider extends PanelProvider
             // specifiche. Con un solo sito Filament salta il selettore da solo.
             ->favicon(asset('img/favicon-admin.svg'))
             ->tenant(Site::class, slugAttribute: 'domain')
+            // Le impostazioni del sito stanno nel pannello del sito, non nel
+            // control plane: chi lo amministra deve poter cambiare la propria
+            // icona senza chiederlo a noi. `SitePolicy` le riserva ad `admin`.
+            ->tenantProfile(ImpostazioniSito::class)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

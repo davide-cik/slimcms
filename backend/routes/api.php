@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BuildWebhookController;
+use App\Http\Controllers\Api\FaviconController;
 use App\Http\Controllers\Api\OpenGraphController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\SitePageController;
@@ -46,6 +47,10 @@ Route::prefix('sites/{site}')
         // solo, lato Laravel, non duplicata nel worker di build.
         Route::get('htaccess', [SiteRedirectController::class, 'htaccess']);
         // Immagini Open Graph: PNG, perche' i social non accettano SVG.
+        // /favicon.ico se lo chiedono i browser da soli, senza guardare
+        // l'HTML: se non c'e' e' un 404 a ogni visita.
+        Route::get('favicon.ico', [FaviconController::class, 'ico']);
+
         Route::get('og.png', [OpenGraphController::class, 'sito']);
         Route::get('og/{slug}.png', [OpenGraphController::class, 'contenuto']);
         Route::get('builds', [BuildWebhookController::class, 'index']);

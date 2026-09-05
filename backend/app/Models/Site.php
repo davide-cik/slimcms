@@ -113,14 +113,17 @@ class Site extends Model implements HasMedia
         return app(\App\Services\GeneratoreFavicon::class)->iniziali($this);
     }
 
-    /** URL pubblica della favicon: il file caricato, o quella generata. */
+    /**
+     * URL pubblica della favicon sul sito del cliente.
+     *
+     * E' sempre `/favicon.ico`: quel file esiste in ogni caso — generato
+     * dalle iniziali o rasterizzato dall'immagine caricata — mentre
+     * `favicon_path` e' un percorso su un disco privato del backend e non e'
+     * un indirizzo raggiungibile da nessuno.
+     */
     public function faviconUrl(): string
     {
-        if (filled($this->favicon_path)) {
-            return $this->favicon_path;
-        }
-
-        return '/favicon.svg';
+        return '/favicon.ico';
     }
 
     public function registerMediaCollections(): void

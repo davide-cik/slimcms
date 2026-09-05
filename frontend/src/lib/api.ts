@@ -149,8 +149,9 @@ export interface Sito {
   domain: string;
   name: string;
   logo_path: string | null;
-  favicon_path: string | null;
-  favicon_svg: string;
+  // Null quando il cliente ha caricato un'immagine non vettoriale: in
+  // quel caso il sito pubblica solo /favicon.ico.
+  favicon_svg: string | null;
   favicon_iniziali: string;
   theme: Record<string, unknown>;
   seo_defaults: SeoDiSito;
@@ -173,6 +174,27 @@ export async function sito(): Promise<Sito> {
  * rileggono a ogni condivisione e devono trovarla sul dominio del sito, non
  * dietro un token dell'API.
  */
+/**
+ * La favicon in formato ICO, in byte.
+ *
+ * Si scarica in build come le immagini Open Graph: `/favicon.ico` lo chiede
+ * il browser al dominio del sito, e dietro un token dell'API non lo
+ * troverebbe mai.
+ */
+export async function faviconIco(): Promise<ArrayBuffer> {
+  if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');
+
+  const risposta = await fetch(`${BASE}/sites/${SITE}/favicon.ico`, {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+
+  if (!risposta.ok) {
+    throw new Error(`Favicon ICO: l'API ha risposto ${risposta.status}.`);
+  }
+
+  return risposta.arrayBuffer();
+}
+
 /** L'immagine Open Graph del SITO, per le pagine che non sono un contenuto. */
 export async function immagineOpenGraphSito(): Promise<ArrayBuffer> {
   if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');

@@ -116,8 +116,17 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {/* Favicon del sito: generata dalle iniziali, oppure il file che il
-        cliente ha caricato. Ogni sito ha la sua. */}
-    <link rel="icon" href={sito?.favicon_path ?? '/favicon.svg'} type="image/svg+xml" />
+        cliente ha caricato. Ogni sito ha la sua.
+
+        L'ICO va dichiarato anche se il browser lo chiederebbe comunque da
+        solo: senza il link, la richiesta arriva fuori dal contesto della
+        pagina e ogni visita ne paga una in piu'. Prima qui c'era
+        `favicon_path`, che e' un percorso su un disco privato del backend:
+        come href dava un 404 sicuro. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    {sito?.favicon_svg && (
+      <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    )}
     <title>{documento.titolo}</title>
     {documento.descrizione && <meta name="description" content={documento.descrizione} />}
     <link rel="canonical" href={canonico} />

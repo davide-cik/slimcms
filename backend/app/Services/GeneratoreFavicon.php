@@ -97,6 +97,102 @@ class GeneratoreFavicon
         SVG;
     }
 
+    /**
+     * La favicon come file ICO vero, in byte.
+     *
+     * Serve perche' un browser che non trova un `<link rel="icon">` utile — e
+     * anche molti che lo trovano, piu' quasi tutti i crawler — chiede
+     * `/favicon.ico` alla radice del dominio, senza guardare l'HTML. Finche'
+     * quel file non c'era, ogni visita produceva un 404: erano i primi che il
+     * nostro stesso monitoraggio ha registrato su slimcms.it.
+     *
+     * Tre dimensioni in un file solo (16, 32, 48): e' cosa sa fare il formato
+     * ICO, e il browser prende quella che gli serve senza riscalare.
+     *
+     * La sorgente e' sempre una sola — il file caricato se c'e', altrimenti
+     * l'SVG generato — cosi' l'icona nella scheda e quella nei preferiti non
+     * possono raccontare due cose diverse.
+     */
+    public function ico(Site $site): string
+    {
+        $sorgente = $this->sorgente($site);
+
+        $ico = new \Imagick();
+
+        foreach ([16, 32, 48] as $lato) {
+            $livello = new \Imagick();
+            $livello->setBackgroundColor(new \ImagickPixel('transparent'));
+            $livello->readImageBlob($sorgente);
+            $livello->setImageFormat('png32');
+            // Il riquadro puo' non essere quadrato se il file l'ha caricato
+            // il cliente: si riempie il quadrato senza deformare, che e' cio'
+            // che ci si aspetta da un'icona.
+            $livello->cropThumbnailImage($lato, $lato);
+            $ico->addImage($livello);
+        }
+
+        $ico->setFormat('ico');
+
+        return $ico->getImagesBlob();
+    }
+
+    /**
+     * I byte da cui rasterizzare: il file caricato dal cliente, oppure l'SVG
+     * generato.
+     *
+     * L'SVG viene reso a 256 pixel e poi rimpicciolito: lasciandolo alla sua
+     * misura naturale (il viewBox, 100 pixel) le iniziali a 16 pixel
+     * uscirebbero impastate.
+     */
+    private function sorgente(Site $site): string
+    {
+        $caricata = $this->fileCaricato($site);
+
+        if ($caricata !== null) {
+            return $caricata;
+        }
+
+        return str_replace(
+            '<svg xmlns=',
+            '<svg width="256" height="256" xmlns=',
+            $this->svg($site)
+        );
+    }
+
+    /**
+     * Il file caricato dal cliente, se c'e' ed e' ancora sul disco.
+     *
+     * Sta su un disco privato: non e' raggiungibile da fuori e non lo deve
+     * essere. Passa di qui, viene convertito, ed esce come file del sito.
+     */
+    public function fileCaricato(Site $site): ?string
+    {
+        if (blank($site->favicon_path)) {
+            return null;
+        }
+
+        $disco = \Illuminate\Support\Facades\Storage::disk(config('filament.default_filesystem_disk', 'local'));
+
+        // Un percorso rimasto nel database dopo che il file e' sparito non e'
+        // un motivo per rispondere 500: si torna a quella generata, che c'e'
+        // sempre.
+        return $disco->exists($site->favicon_path) ? $disco->get($site->favicon_path) : null;
+    }
+
+    /** L'SVG da pubblicare, o null se il cliente ha caricato un'immagine non vettoriale. */
+    public function svgPubblicabile(Site $site): ?string
+    {
+        if (blank($site->favicon_path)) {
+            return $this->svg($site);
+        }
+
+        // Un PNG non diventa un SVG: in quel caso il sito dichiara solo
+        // l'ICO. Meglio una sola icona giusta che due che si contraddicono.
+        return str_ends_with(strtolower($site->favicon_path), '.svg')
+            ? $this->fileCaricato($site)
+            : null;
+    }
+
     /** Accetta solo colori esadecimali: qualunque altra cosa finirebbe dentro l'SVG. */
     private function colore(?string $valore, string $default): string
     {

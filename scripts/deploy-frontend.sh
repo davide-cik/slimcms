@@ -165,6 +165,17 @@ echo "    open graph: tutte le anteprime presenti"
 
 echo "    immagini: tutte presenti"
 
+# /favicon.ico non compare in nessun href dell'HTML per volere del browser:
+# lo chiede da solo alla radice del dominio, e con lui ogni crawler. Se manca
+# il sito risponde 404 a ogni visita, il che e' esattamente il primo 404 che
+# il nostro monitoraggio ha registrato su slimcms.it.
+[[ -s dist/favicon.ico ]] || errore "dist/favicon.ico assente: ogni visita produrrebbe un 404."
+# Un ICO vero comincia con 00 00 01 00. Un file della giusta dimensione ma
+# con dentro una pagina di errore JSON dell'API passerebbe il controllo sopra.
+[[ "$(head -c 4 dist/favicon.ico | od -An -tx1 | tr -d ' ')" == "00000100" ]] \
+  || errore "dist/favicon.ico non e' un file ICO: l'API ha risposto qualcos'altro."
+echo "    favicon: /favicon.ico presente e valida$([[ -s dist/favicon.svg ]] && echo ', con la variante SVG')"
+
 # Il .htaccess porta i reindirizzamenti e la pagina d'errore del sito. Se e'
 # malformato Apache risponde 500 su TUTTO il sito, non solo sugli indirizzi
 # reindirizzati: e' il file piu' pericoloso che pubblichiamo.

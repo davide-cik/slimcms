@@ -1,6 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-import { readFile, rename, unlink } from 'node:fs/promises';
+import { readFile, rename, stat, unlink } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -42,11 +42,46 @@ function htaccessDiSlimcms() {
   };
 }
 
+/**
+ * Toglie dal `dist/` la favicon SVG quando non ce n'e' una.
+ *
+ * Se il cliente ha caricato un PNG, l'API restituisce `favicon_svg: null`: un
+ * PNG non diventa un SVG, e due icone che si contraddicono sono peggio di una
+ * sola. Astro pero' non sa saltare una rotta statica — o la scrive, o non
+ * esiste — quindi la rotta scrive un file vuoto e qui lo si toglie. Nessuna
+ * pagina lo dichiara in quel caso, ma un file vuoto pubblicato e' comunque
+ * una risposta 200 su un'icona che non c'e'.
+ */
+function faviconDiSlimcms() {
+  return {
+    name: 'slimcms-favicon',
+    hooks: {
+      'astro:build:done': async ({ dir, logger }) => {
+        const svg = fileURLToPath(new URL('favicon.svg', dir));
+        const ico = fileURLToPath(new URL('favicon.ico', dir));
+
+        // L'ICO invece deve esserci sempre: e' quello che il browser chiede
+        // da solo. Se manca, la build non va pubblicata.
+        const misuraIco = await stat(ico).catch(() => null);
+        if (!misuraIco || misuraIco.size === 0) {
+          throw new Error('favicon.ico assente o vuota: il sito risponderebbe 404 a ogni visita.');
+        }
+
+        const misuraSvg = await stat(svg).catch(() => null);
+        if (misuraSvg && misuraSvg.size === 0) {
+          await unlink(svg);
+          logger.info('favicon.svg vuota rimossa: il sito usa solo /favicon.ico');
+        }
+      },
+    },
+  };
+}
+
 // Nota: `output: 'hybrid'` (citato nelle specifiche) e' stato RIMOSSO in Astro 7.
 // 'static' e' ora il default e si comporta allo stesso modo: prerendering per
 // default, con `export const prerender = false` sulle singole pagine dinamiche.
 export default defineConfig({
   site: 'https://slimcms.it',
   output: 'static',
-  integrations: [htaccessDiSlimcms()],
+  integrations: [htaccessDiSlimcms(), faviconDiSlimcms()],
 });
