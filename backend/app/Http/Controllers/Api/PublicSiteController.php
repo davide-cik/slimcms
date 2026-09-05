@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\MessaggioDiContatto;
 use App\Models\Messaggio;
+use App\Models\Modulo;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\Site;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Captcha\FabbricaCaptcha;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -80,14 +82,27 @@ class PublicSiteController extends Controller
         ]);
     }
 
+    /**
+     * Una sfida per il captcha semplice.
+     *
+     * Solo quello semplice ne ha bisogno: Turnstile e reCAPTCHA se la
+     * generano nel browser parlando col proprio fornitore. Per gli altri
+     * questa rotta risponde con `null` invece di 404, cosi' il sito puo'
+     * chiamarla sempre senza sapere in anticipo quale captcha e' configurato.
+     */
+    public function captcha(): JsonResponse
+    {
+        $site = app()->bound('currentSite') ? app('currentSite') : null;
+
+        return response()->json([
+            'captcha' => FabbricaCaptcha::per($site)->perIlSito(),
+            'sfida' => FabbricaCaptcha::per($site)->sfida(),
+        ]);
+    }
+
     public function contact(Request $request): JsonResponse
     {
-        $dati = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email', 'max:180'],
-            'message' => ['required', 'string', 'max:5000'],
-            'page' => ['nullable', 'string', 'max:300'],
-        ]);
+        $site = app()->bound('currentSite') ? app('currentSite') : null;
 
         // Honeypot: un campo nascosto che un umano non vede e non compila
         // mai. Se arriva pieno e' un bot, e la risposta e' un 200 identico a
@@ -101,7 +116,41 @@ class PublicSiteController extends Controller
             return $this->ricevuto();
         }
 
-        $site = app()->bound('currentSite') ? app('currentSite') : null;
+        // Il modulo dice quali campi aspettarsi. Se non arriva — moduli
+        // vecchi, o un sito che non ne ha ancora definito nessuno — restano i
+        // tre di sempre.
+        $modulo = filled($request->input('modulo'))
+            ? Modulo::query()->attivi()->where('slug', $request->string('modulo'))->first()
+            : null;
+
+        // Il captcha PRIMA della validazione: a un bot non si dice quali
+        // campi ha sbagliato.
+        $captcha = FabbricaCaptcha::per($site);
+
+        $gettone = $request->input('cf-turnstile-response')
+            ?? $request->input('g-recaptcha-response')
+            ?? $request->input('captcha_token');
+
+        if (! $captcha->verifica($request->input('captcha'), $gettone, $request->ip())) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'La verifica anti-spam non e\' andata a buon fine. Riprova.',
+                'errors' => ['captcha' => ['Verifica non superata.']],
+            ], 422);
+        }
+
+        $regole = [
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:180'],
+            'message' => ['required', 'string', 'max:5000'],
+            'page' => ['nullable', 'string', 'max:300'],
+        ];
+
+        foreach ($modulo?->campiNormalizzati() ?? [] as $campo) {
+            $regole['dati.' . $campo['nome']] = $this->regolePerCampo($campo);
+        }
+
+        $dati = $request->validate($regole);
 
         // Prima la riga, poi la mail. Un form che risponde "messaggio
         // ricevuto" e poi si affida solo all'invio e' un modo per perdere
@@ -111,28 +160,80 @@ class PublicSiteController extends Controller
         // c'era una riga di log con dentro nome ed email del visitatore, che
         // e' il posto sbagliato per i dati di una persona.
         $messaggio = Messaggio::create([
+            'modulo_id' => $modulo?->getKey(),
             'nome' => $dati['name'],
             'email' => $dati['email'],
             'messaggio' => $dati['message'],
+            'dati' => $this->extra($modulo, $dati['dati'] ?? []),
             'pagina' => $dati['page'] ?? null,
             'ip' => $request->ip(),
             'user_agent' => mb_substr((string) $request->userAgent(), 0, 300),
         ]);
 
-        $this->avvisa($site, $messaggio);
+        $this->avvisa($site, $messaggio, $modulo);
 
-        return $this->ricevuto();
+        return $this->ricevuto($modulo?->messaggio_conferma);
+    }
+
+    /**
+     * Le regole di validazione di un campo definito nel pannello.
+     *
+     * @param  array{nome: string, tipo: string, obbligatorio: bool, opzioni: list<string>}  $campo
+     * @return list<mixed>
+     */
+    private function regolePerCampo(array $campo): array
+    {
+        $regole = [$campo['obbligatorio'] ? 'required' : 'nullable'];
+
+        return array_merge($regole, match ($campo['tipo']) {
+            'email' => ['email', 'max:180'],
+            'numero' => ['numeric'],
+            'telefono' => ['string', 'max:40'],
+            'testo_lungo' => ['string', 'max:5000'],
+            // Una scelta fuori elenco non e' un refuso: e' qualcuno che ha
+            // cambiato il valore prima di inviare.
+            'scelta' => $campo['opzioni'] === [] ? ['string', 'max:200'] : ['in:' . implode(',', $campo['opzioni'])],
+            'consenso' => ['accepted'],
+            default => ['string', 'max:200'],
+        });
+    }
+
+    /**
+     * Gli extra da salvare, con le etichette accanto ai valori.
+     *
+     * Le etichette si copiano nel messaggio invece di risolverle ogni volta
+     * dal modulo: un campo rinominato o cancellato l'anno prossimo non deve
+     * rendere illeggibile un messaggio ricevuto oggi.
+     *
+     * @return array<int, array{etichetta: string, valore: mixed}>
+     */
+    private function extra(?Modulo $modulo, array $valori): array
+    {
+        $extra = [];
+
+        foreach ($modulo?->campiNormalizzati() ?? [] as $campo) {
+            if (! array_key_exists($campo['nome'], $valori)) {
+                continue;
+            }
+
+            $extra[] = [
+                'etichetta' => $campo['etichetta'],
+                'valore' => $valori[$campo['nome']],
+            ];
+        }
+
+        return $extra;
     }
 
     /**
      * La stessa identica risposta per un messaggio vero e per uno scartato
      * dall'esca: e' il punto dell'esca.
      */
-    private function ricevuto(): JsonResponse
+    private function ricevuto(?string $conferma = null): JsonResponse
     {
         return response()->json([
             'ok' => true,
-            'message' => 'Messaggio ricevuto. Ti rispondiamo al piu\' presto.',
+            'message' => $conferma ?: 'Messaggio ricevuto. Ti rispondiamo al piu\' presto.',
         ]);
     }
 
@@ -144,9 +245,12 @@ class PublicSiteController extends Controller
      * e' che il titolare lo scopra dal pannello invece che dalla posta. Si
      * annota nel log — dove finisce l'errore, non i dati della persona.
      */
-    private function avvisa(?Site $site, Messaggio $messaggio): void
+    private function avvisa(?Site $site, Messaggio $messaggio, ?Modulo $modulo = null): void
     {
-        $destinatario = $site?->contact_email;
+        // Il destinatario del modulo, altrimenti quello del sito: un sito
+        // puo' avere un indirizzo generale e un modulo "lavora con noi" che
+        // va da un'altra parte.
+        $destinatario = $modulo?->destinatario() ?? $site?->contact_email;
 
         if (blank($destinatario)) {
             return;

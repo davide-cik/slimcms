@@ -230,7 +230,7 @@ class ContrattoBlocchiTest extends TestCase
             'loghi' => ['titolo' => 'Loghi', 'media' => [$uuid]],
             'incorpora' => ['url' => 'https://www.youtube.com/watch?v=abc123', 'titolo' => 'Video'],
             'contatti' => ['titolo' => 'Contatti', 'email' => 'a@b.it', 'telefono' => '+39 0', 'indirizzo' => 'Via', 'orari' => '9-18'],
-            'modulo_contatto' => ['titolo' => 'Scrivici', 'testo' => 'Rispondiamo entro un giorno.', 'etichetta' => 'Invia', 'conferma' => 'Grazie!'],
+            'modulo_contatto' => ['modulo_id' => null, 'titolo' => 'Scrivici', 'testo' => 'Rispondiamo entro un giorno.', 'etichetta' => 'Invia', 'conferma' => 'Grazie!'],
             'separatore' => ['stile' => 'linea'],
             'faq' => ['voci' => [['domanda' => 'D?', 'risposta' => 'R.']]],
             default => $this->fail("Blocco '{$tipo}' senza dati di prova: aggiungili in datiDiProva()."),

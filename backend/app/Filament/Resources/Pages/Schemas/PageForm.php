@@ -411,6 +411,16 @@ class PageForm
                     ->label('Modulo di contatto')
                     ->icon('heroicon-o-envelope')
                     ->schema([
+                        // Quale modulo, fra quelli definiti per questo sito.
+                        // Vuoto = il primo attivo, cosi' un sito con un solo
+                        // modulo non deve sceglierlo ogni volta.
+                        Select::make('modulo_id')
+                            ->label('Modulo')
+                            ->options(fn (): array => \App\Models\Modulo::query()
+                                ->attivi()->orderBy('nome')->pluck('nome', 'id')->all())
+                            ->placeholder('Il primo modulo attivo del sito')
+                            ->helperText('I moduli si creano e si modificano in «Moduli».'),
+
                         TextInput::make('titolo')->label('Titolo')->placeholder('Scrivici'),
                         TextInput::make('etichetta')->label('Testo del pulsante')
                             ->placeholder('Invia il messaggio')->maxLength(40),

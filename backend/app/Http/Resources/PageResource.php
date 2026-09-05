@@ -100,11 +100,49 @@ class PageResource extends JsonResource
         };
 
         return array_map(
-            fn (array $blocco): array => [
-                'type' => $blocco['type'] ?? null,
-                'data' => $risolvi($blocco['data'] ?? []),
-            ],
+            function (array $blocco) use ($risolvi): array {
+                $dati = $risolvi($blocco['data'] ?? []);
+
+                // Un blocco modulo porta l'id del modulo; il sito ha bisogno
+                // dei suoi campi per disegnarlo. Si risolvono qui come le
+                // immagini, per la stessa ragione: Astro riceve tutto cio'
+                // che gli serve e non fa una seconda domanda all'API.
+                if (($blocco['type'] ?? null) === 'modulo_contatto') {
+                    $dati['modulo'] = $this->moduloRisolto($dati['modulo_id'] ?? null);
+                    unset($dati['modulo_id']);
+                }
+
+                return ['type' => $blocco['type'] ?? null, 'data' => $dati];
+            },
             array_values($this->blocks ?? [])
         );
+    }
+
+    /**
+     * Il modulo di un blocco, con i suoi campi.
+     *
+     * Se non c'e' o non e' attivo si ricade su quello di contatto del sito, e
+     * se non esiste nemmeno quello si torna `null`: il sito disegna comunque
+     * i tre campi di sempre, invece di mostrare un modulo vuoto o di far
+     * fallire la build per una configurazione incompleta.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function moduloRisolto(int|string|null $id): ?array
+    {
+        $modulo = filled($id)
+            ? \App\Models\Modulo::query()->attivi()->find($id)
+            : \App\Models\Modulo::query()->attivi()->orderBy('id')->first();
+
+        if ($modulo === null) {
+            return null;
+        }
+
+        return [
+            'slug' => $modulo->slug,
+            'nome' => $modulo->nome,
+            'conferma' => $modulo->messaggio_conferma,
+            'campi' => $modulo->campiNormalizzati(),
+        ];
     }
 }

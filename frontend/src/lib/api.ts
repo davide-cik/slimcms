@@ -153,6 +153,9 @@ export interface Sito {
   // quel caso il sito pubblica solo /favicon.ico.
   favicon_svg: string | null;
   favicon_iniziali: string;
+  // Come disegnare la verifica anti-spam. Solo la parte pubblica: il segreto
+  // resta nel backend.
+  captcha?: { tipo: 'semplice' | 'turnstile' | 'recaptcha' | 'nessuno'; chiave?: string | null };
   theme: Record<string, unknown>;
   seo_defaults: SeoDiSito;
   og_config: Record<string, unknown>;

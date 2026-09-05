@@ -290,10 +290,66 @@ La pagina `/cerca/` e' `noindex` (una pagina di ricerca vuota e' contenuto sotti
 sta nel menu: la voce la aggiunge il cliente dal pannello, come qualsiasi altra. Dalla
 pagina 404 ci si arriva, perche' chi si e' perso e' esattamente chi ha bisogno di cercare.
 
+### I moduli sono un'area del sito, non un form cablato
+
+Un sito ha **quanti moduli servono** — contatti, richiesta preventivo, iscrizione — ognuno
+con i propri campi, il proprio destinatario e il proprio messaggio di conferma. Si creano
+in «Moduli»; il blocco `modulo_contatto` del page builder sceglie quale mostrare, e vuoto
+prende il primo attivo (un sito con un modulo solo non deve sceglierlo ogni volta).
+
+Nome, email e messaggio **non si dichiarano**: ci sono sempre, e stanno su colonne di
+`messaggi` perche' sono quelli su cui si cerca e si ordina. `campi` elenca solo quelli in
+piu', e i loro valori finiscono in `messaggi.dati` **con l'etichetta accanto**: un campo
+rinominato o cancellato l'anno prossimo non deve rendere illeggibile un messaggio ricevuto
+oggi.
+
+I campi del modulo arrivano al sito dentro il blocco, risolti da `PageResource` come le
+immagini: Astro riceve tutto cio' che gli serve e non fa una seconda domanda all'API.
+
+Un modulo spento non accetta piu' invii, ma i messaggi ricevuti restano: sono di chi li ha
+scritti, non del modulo che li ha raccolti.
+
+### Verifica anti-spam: il fornitore lo sceglie il sito
+
+`App\Support\Captcha` ha un'interfaccia e quattro attuazioni, e `sites.captcha_fornitore`
+dice quale usare. Chi non ha un account Cloudflare o Google deve avere comunque qualcosa
+che funzioni, e chi ce l'ha non dev'essere costretto al nostro.
+
+| | |
+|---|---|
+| `semplice` (**predefinito**) | una domanda di aritmetica firmata, nessun account, nessun dato a terzi |
+| `turnstile` | Cloudflare Turnstile |
+| `recaptcha` | Google reCAPTCHA v3, soglia 0.5 |
+| `nessuno` | solo esca e limite di invii |
+
+Il predefinito e' `semplice` e non `nessuno`: un modulo appena creato deve gia' avere una
+difesa. Chi vuole toglierla lo dichiara.
+
+**Il captcha semplice non tiene stato sul server.** La sfida viaggia come domanda piu' un
+token `scadenza.firma`, dove la firma e' un HMAC della risposta giusta; alla verifica si
+ricalcola con la risposta arrivata. Niente tabella di sfide aperte — sarebbe uno stato da
+far scadere, da pulire, e un posto in cui un bot puo' far crescere righe a piacere. Il
+token speso finisce in cache fino alla scadenza, altrimenti la stessa coppia si
+rigiocherebbe.
+
+La domanda arriva **dall'API a pagina caricata**, non dalla build: cucita nell'HTML sarebbe
+identica per tutti i visitatori e valida finche' dura la cache del sito, cioe' non sarebbe
+una verifica.
+
+**Il segreto non esce mai dal backend** ed e' cifrato a riposo (`'encrypted'`): finirebbe
+nell'HTML di una pagina pubblica. Dall'API esce solo tipo e chiave pubblica; un test lo
+fissa.
+
+**Un fornitore irraggiungibile non butta via un messaggio.** Se Turnstile o Google non
+rispondono si accetta e si annota: un modulo che smette di funzionare perche' Cloudflare ha
+un problema fa perdere richieste vere, e l'esca col rate limit restano comunque in piedi.
+
+Il captcha si verifica **prima** della validazione dei campi: a un bot non si dice quali
+campi ha sbagliato.
+
 ### Il contatto e' l'unica cosa che scrive
 
-Blocco `modulo_contatto` del page builder, quindi il cliente lo mette dove vuole. Il
-browser chiama `POST /api/public/{sito}/contact`.
+Il browser chiama `POST /api/public/{sito}/contact`.
 
 **Il sito sta nella URL, non nell'Host.** Il sito statico vive su `<dominio-cliente>` e
 l'API su `manage.slimcms.it`: la chiamata e' per forza cross-origin, e l'Host che arriva

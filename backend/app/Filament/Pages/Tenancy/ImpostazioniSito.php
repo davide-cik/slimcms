@@ -45,6 +45,34 @@ class ImpostazioniSito extends EditTenantProfile
                             . 'questa e\' solo la notifica. Se la lasci vuota non parte nessuna email.'),
                 ]),
 
+            Section::make('Verifica anti-spam')
+                ->description('Come il sito distingue una persona da un bot che compila moduli a tappeto.')
+                ->schema([
+                    Radio::make('captcha_fornitore')
+                        ->label('Fornitore')
+                        ->options(\App\Support\Captcha\FabbricaCaptcha::FORNITORI)
+                        ->default('semplice')
+                        ->live()
+                        ->helperText('La domanda semplice non richiede nessun account e non manda dati a terzi. '
+                            . 'Gli altri due sono piu\' efficaci su un sito molto bersagliato.'),
+
+                    TextInput::make('captcha_chiave_pubblica')
+                        ->label('Chiave del sito')
+                        ->maxLength(200)
+                        ->visible(fn (Get $get): bool => in_array($get('captcha_fornitore'), ['turnstile', 'recaptcha'], true))
+                        ->helperText('La chiave pubblica, quella che finisce nella pagina.'),
+
+                    TextInput::make('captcha_segreto')
+                        ->label('Chiave segreta')
+                        ->password()
+                        ->revealable()
+                        ->maxLength(200)
+                        ->visible(fn (Get $get): bool => in_array($get('captcha_fornitore'), ['turnstile', 'recaptcha'], true))
+                        // Non esce mai dal backend e resta cifrata nel
+                        // database: e' quella con cui si verifica.
+                        ->helperText('Resta qui, cifrata. Non compare mai nel sito.'),
+                ])->columns(2),
+
             Section::make('Favicon')
                 ->description('L\'icona che compare nella scheda del browser e fra i preferiti.')
                 ->schema([

@@ -1,4 +1,6 @@
 ---
+import { sito } from '../../lib/api';
+
 /**
  * Il modulo di contatto: l'unica parte del sito pubblico che scrive.
  *
@@ -12,19 +14,36 @@
  * di build, e viaggia come attributo. `src/lib/api.ts` non va importato da
  * codice che gira nel browser: porta il token di build.
  */
+export interface CampoModulo {
+  nome: string;
+  etichetta: string;
+  tipo: 'testo' | 'testo_lungo' | 'email' | 'telefono' | 'numero' | 'scelta' | 'consenso';
+  obbligatorio: boolean;
+  opzioni: string[];
+}
+
 interface Props {
   titolo?: string;
   testo?: string;
   etichetta?: string;
   conferma?: string;
+  /** Il modulo scelto nel pannello, risolto dall'API con i suoi campi. */
+  modulo?: { slug: string; nome: string; conferma?: string | null; campi: CampoModulo[] } | null;
 }
 
-const { titolo, testo, etichetta, conferma } = Astro.props;
+const { titolo, testo, etichetta, conferma, modulo } = Astro.props;
+
+const campi: CampoModulo[] = modulo?.campi ?? [];
+
+// Il captcha lo sceglie il sito. La configurazione si legge in fase di build:
+// `api.ts` non va importato da codice che gira nel browser, porta il token.
+const infoSito = await sito();
+const captcha = infoSito.captcha ?? { tipo: 'semplice' as const };
 
 const base = (import.meta.env.SLIMCMS_API_URL ?? '').replace(/\/$/, '');
-const sito = import.meta.env.SLIMCMS_SITE ?? '';
+const dominio = import.meta.env.SLIMCMS_SITE ?? '';
 
-if (!base || !sito) {
+if (!base || !dominio) {
   throw new Error(
     'Modulo di contatto: SLIMCMS_API_URL o SLIMCMS_SITE non impostati. ' +
       'Senza, il modulo verrebbe pubblicato con un indirizzo vuoto e ogni ' +
@@ -32,7 +51,8 @@ if (!base || !sito) {
   );
 }
 
-const endpoint = `${base}/public/${sito}/contact`;
+const endpoint = `${base}/public/${dominio}/contact`;
+const endpointCaptcha = `${base}/public/${dominio}/captcha`;
 
 // Gli id devono essere unici: una pagina puo' avere due moduli, e due
 // `for="mc-nome"` fanno puntare la seconda etichetta al primo campo.
@@ -46,7 +66,11 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
   <form
     class="modulo"
     data-endpoint={endpoint}
-    data-conferma={conferma || 'Grazie, ti rispondiamo al più presto.'}
+    data-conferma={conferma || modulo?.conferma || 'Grazie, ti rispondiamo al più presto.'}
+    data-modulo={modulo?.slug ?? ''}
+    data-captcha={captcha.tipo}
+    data-captcha-url={endpointCaptcha}
+    data-captcha-chiave={captcha.chiave ?? ''}
     novalidate
   >
     <div class="campo">
@@ -64,6 +88,37 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
       <textarea id={`${uid}-messaggio`} name="message" required maxlength="5000" rows="6"></textarea>
     </div>
 
+    {campi.map((c) => (
+      <div class={c.tipo === 'consenso' ? 'campo campo-consenso' : 'campo'}>
+        {c.tipo === 'consenso' ? (
+          <label>
+            <input type="checkbox" name={`dati[${c.nome}]`} value="1" required={c.obbligatorio} />
+            <span>{c.etichetta}</span>
+          </label>
+        ) : (
+          <>
+            <label for={`${uid}-${c.nome}`}>{c.etichetta}</label>
+            {c.tipo === 'testo_lungo' ? (
+              <textarea id={`${uid}-${c.nome}`} name={`dati[${c.nome}]`} rows="4" required={c.obbligatorio} maxlength="5000" />
+            ) : c.tipo === 'scelta' ? (
+              <select id={`${uid}-${c.nome}`} name={`dati[${c.nome}]`} required={c.obbligatorio}>
+                <option value="">Scegli…</option>
+                {c.opzioni.map((o) => <option value={o}>{o}</option>)}
+              </select>
+            ) : (
+              <input
+                id={`${uid}-${c.nome}`}
+                name={`dati[${c.nome}]`}
+                type={c.tipo === 'email' ? 'email' : c.tipo === 'telefono' ? 'tel' : c.tipo === 'numero' ? 'number' : 'text'}
+                required={c.obbligatorio}
+                maxlength="200"
+              />
+            )}
+          </>
+        )}
+      </div>
+    ))}
+
     {/*
       Trappola per i bot: un campo che un umano non vede e non compila mai.
       Nascosto con CSS e non con `type=hidden`, che i bot riconoscono; fuori
@@ -75,11 +130,37 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
       <input id={`${uid}-website`} name="website" type="text" tabindex="-1" autocomplete="off" />
     </div>
 
+    {/*
+      La verifica anti-spam. Quella semplice arriva dall'API a pagina
+      caricata e non in fase di build: una domanda cucita nell'HTML sarebbe
+      identica per tutti i visitatori e resterebbe valida finche' dura la
+      cache del sito, cioe' non sarebbe una verifica.
+    */}
+    {captcha.tipo === 'semplice' && (
+      <div class="campo campo-captcha" hidden>
+        <label for={`${uid}-captcha`}><span class="captcha-domanda"></span></label>
+        <input id={`${uid}-captcha`} name="captcha" type="text" inputmode="numeric" autocomplete="off" />
+        <input type="hidden" name="captcha_token" value="" />
+      </div>
+    )}
+
+    {captcha.tipo === 'turnstile' && captcha.chiave && (
+      <div class="cf-turnstile" data-sitekey={captcha.chiave} data-theme="auto"></div>
+    )}
+
     <button type="submit">{etichetta || 'Invia il messaggio'}</button>
 
     <p class="modulo-esito" role="status" aria-live="polite"></p>
   </form>
 </section>
+
+{captcha.tipo === 'turnstile' && (
+  <script is:inline async defer src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
+)}
+
+{captcha.tipo === 'recaptcha' && captcha.chiave && (
+  <script is:inline async defer src={`https://www.google.com/recaptcha/api.js?render=${captcha.chiave}`}></script>
+)}
 
 <script is:inline>
   (function () {
@@ -88,83 +169,141 @@ const uid = `mc-${Math.random().toString(36).slice(2, 8)}`;
     var moduli = document.querySelectorAll('form.modulo[data-endpoint]');
 
     Array.prototype.forEach.call(moduli, function (modulo) {
-    if (modulo.dataset.legato === '1') return;
-    modulo.dataset.legato = '1';
+      if (modulo.dataset.legato === '1') return;
+      modulo.dataset.legato = '1';
 
-    var esito = modulo.querySelector('.modulo-esito');
-    var pulsante = modulo.querySelector('button[type=submit]');
-    var etichettaOriginale = pulsante ? pulsante.textContent : '';
+      var esito = modulo.querySelector('.modulo-esito');
+      var pulsante = modulo.querySelector('button[type=submit]');
+      var etichettaOriginale = pulsante ? pulsante.textContent : '';
+      var tipoCaptcha = modulo.dataset.captcha || 'nessuno';
 
-    function messaggio(testo, tipo) {
-      if (!esito) return;
-      esito.textContent = testo;
-      esito.className = 'modulo-esito ' + tipo;
-    }
-
-    modulo.addEventListener('submit', function (evento) {
-      evento.preventDefault();
-
-      // La validazione del browser resta la prima linea: `novalidate` toglie
-      // solo i messaggi automatici, non i vincoli.
-      if (!modulo.checkValidity()) {
-        messaggio('Controlla i campi obbligatori.', 'errore');
-        modulo.reportValidity();
-        return;
+      function messaggio(testo, tipo) {
+        if (!esito) return;
+        esito.textContent = testo;
+        esito.className = 'modulo-esito ' + tipo;
       }
 
-      var dati = new FormData(modulo);
-      dati.append('page', window.location.pathname);
+      // ---- captcha semplice: la domanda arriva dall'API, non dall'HTML.
+      // Cucita nella pagina sarebbe identica per tutti i visitatori e
+      // valida finche' dura la cache del sito: non sarebbe una verifica.
+      function caricaSfida() {
+        if (tipoCaptcha !== 'semplice') return Promise.resolve();
 
-      if (pulsante) {
-        pulsante.disabled = true;
-        pulsante.textContent = 'Invio…';
-      }
-      messaggio('', '');
+        var riquadro = modulo.querySelector('.campo-captcha');
+        if (!riquadro) return Promise.resolve();
 
-      fetch(modulo.dataset.endpoint, {
-        method: 'POST',
-        headers: { Accept: 'application/json' },
-        body: dati,
-      })
-        .then(function (r) {
-          return r.json().then(function (corpo) {
-            return { ok: r.ok, stato: r.status, corpo: corpo };
+        return fetch(modulo.dataset.captchaUrl)
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d || !d.sfida) return;
+            riquadro.querySelector('.captcha-domanda').textContent = d.sfida.domanda;
+            riquadro.querySelector('input[name=captcha_token]').value = d.sfida.token;
+            riquadro.querySelector('input[name=captcha]').value = '';
+            riquadro.querySelector('input[name=captcha]').required = true;
+            riquadro.hidden = false;
+          })
+          .catch(function () {
+            // Senza domanda il campo resta nascosto e non obbligatorio: il
+            // server rifiutera' l'invio, ma non si chiede a chi scrive di
+            // rispondere a una domanda che non e' comparsa.
           });
-        })
-        .then(function (r) {
-          if (r.ok) {
-            modulo.reset();
-            messaggio(modulo.dataset.conferma, 'ok');
-            return;
-          }
+      }
 
-          // 422: la validazione del server. 429: troppi invii ravvicinati.
-          // Dire quale dei due e' successo evita che chi ha scritto davvero
-          // riprovi a vuoto.
-          if (r.stato === 429) {
-            messaggio('Hai già inviato un messaggio poco fa. Riprova fra un minuto.', 'errore');
-            return;
-          }
+      caricaSfida();
 
-          var errori = r.corpo && r.corpo.errors ? Object.values(r.corpo.errors)[0] : null;
-          messaggio(
-            errori && errori[0] ? errori[0] : 'Non è stato possibile inviare il messaggio.',
-            'errore'
-          );
-        })
-        .catch(function () {
-          messaggio(
-            'Non è stato possibile inviare il messaggio. Controlla la connessione e riprova.',
-            'errore'
-          );
-        })
-        .finally(function () {
-          if (pulsante) {
-            pulsante.disabled = false;
-            pulsante.textContent = etichettaOriginale;
-          }
+      // ---- reCAPTCHA v3: il gettone si prende al momento dell'invio.
+      function gettoneRecaptcha() {
+        if (tipoCaptcha !== 'recaptcha' || typeof grecaptcha === 'undefined') {
+          return Promise.resolve(null);
+        }
+
+        return new Promise(function (risolvi) {
+          grecaptcha.ready(function () {
+            grecaptcha
+              .execute(modulo.dataset.captchaChiave || '', { action: 'contatto' })
+              .then(risolvi)
+              .catch(function () { risolvi(null); });
+          });
         });
-    });
+      }
+
+      modulo.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+
+        // La validazione del browser resta la prima linea: `novalidate`
+        // toglie solo i messaggi automatici, non i vincoli.
+        if (!modulo.checkValidity()) {
+          messaggio('Controlla i campi obbligatori.', 'errore');
+          modulo.reportValidity();
+          return;
+        }
+
+        if (pulsante) {
+          pulsante.disabled = true;
+          pulsante.textContent = 'Invio…';
+        }
+        messaggio('', '');
+
+        gettoneRecaptcha()
+          .then(function (gettone) {
+            var dati = new FormData(modulo);
+            dati.append('page', window.location.pathname);
+
+            if (modulo.dataset.modulo) dati.append('modulo', modulo.dataset.modulo);
+            if (gettone) dati.append('g-recaptcha-response', gettone);
+
+            return fetch(modulo.dataset.endpoint, {
+              method: 'POST',
+              headers: { Accept: 'application/json' },
+              body: dati,
+            });
+          })
+          .then(function (r) {
+            return r.json().then(function (corpo) {
+              return { ok: r.ok, stato: r.status, corpo: corpo };
+            });
+          })
+          .then(function (r) {
+            if (r.ok) {
+              modulo.reset();
+              messaggio(r.corpo && r.corpo.message ? r.corpo.message : modulo.dataset.conferma, 'ok');
+              // Il gettone appena speso non vale piu': ne serve uno nuovo
+              // per un secondo invio.
+              caricaSfida();
+              if (typeof turnstile !== 'undefined') turnstile.reset();
+              return;
+            }
+
+            // 429: troppi invii ravvicinati. Dirlo evita che chi ha scritto
+            // davvero riprovi a vuoto.
+            if (r.stato === 429) {
+              messaggio('Hai già inviato un messaggio poco fa. Riprova fra un minuto.', 'errore');
+              return;
+            }
+
+            var errori = r.corpo && r.corpo.errors ? Object.values(r.corpo.errors)[0] : null;
+            messaggio(
+              errori && errori[0] ? errori[0] : 'Non è stato possibile inviare il messaggio.',
+              'errore'
+            );
+
+            // Una verifica fallita consuma comunque la domanda.
+            caricaSfida();
+            if (typeof turnstile !== 'undefined') turnstile.reset();
+          })
+          .catch(function () {
+            messaggio(
+              'Non è stato possibile inviare il messaggio. Controlla la connessione e riprova.',
+              'errore'
+            );
+          })
+          .finally(function () {
+            if (pulsante) {
+              pulsante.disabled = false;
+              pulsante.textContent = etichettaOriginale;
+            }
+          });
+      });
     });
   })();
 </script>

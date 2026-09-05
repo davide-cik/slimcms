@@ -72,6 +72,10 @@ Route::prefix('public/{sito}')
     ->middleware(['site.parametro', 'throttle:60,1'])
     ->group(function () {
         Route::get('search', [PublicSiteController::class, 'search']);
+        // La sfida del captcha semplice. Gli altri fornitori la generano nel
+        // browser, e per loro questa risponde `null` invece di 404: il sito
+        // la chiama sempre, senza sapere in anticipo quale sia configurato.
+        Route::get('captcha', [PublicSiteController::class, 'captcha']);
         Route::post('contact', [PublicSiteController::class, 'contact'])
             ->middleware('throttle:5,1');
     });

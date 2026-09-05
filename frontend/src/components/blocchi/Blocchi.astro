@@ -212,6 +212,7 @@ const elenco = blocchi.map((b) => ({
             testo={b.testo ? String(b.testo) : undefined}
             etichetta={b.etichetta ? String(b.etichetta) : undefined}
             conferma={b.conferma ? String(b.conferma) : undefined}
+            modulo={(b.modulo as any) ?? null}
           />
         );
 

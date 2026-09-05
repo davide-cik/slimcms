@@ -46,9 +46,34 @@ class ContattoTest extends TestCase
         Mail::fake();
     }
 
+    /**
+     * La sfida del captcha semplice, risolta.
+     *
+     * I test non la spengono: da quando esiste, il captcha semplice e' il
+     * valore predefinito di ogni sito, quindi spegnerlo qui vorrebbe dire
+     * provare un percorso che nessun sito vero segue.
+     *
+     * @return array{captcha: string, captcha_token: string}
+     */
+    private function sfidaRisolta(string $dominio): array
+    {
+        $sfida = $this->getJson("/api/public/{$dominio}/captcha")->json('sfida');
+
+        if ($sfida === null) {
+            return [];
+        }
+
+        preg_match('/(\d+) (.) (\d+)/u', $sfida['domanda'], $m);
+
+        return [
+            'captcha' => (string) ($m[2] === '+' ? $m[1] + $m[3] : $m[1] - $m[3]),
+            'captcha_token' => $sfida['token'],
+        ];
+    }
+
     private function invia(string $dominio, array $sovrascrivi = []): \Illuminate\Testing\TestResponse
     {
-        return $this->postJson("/api/public/{$dominio}/contact", array_merge([
+        return $this->postJson("/api/public/{$dominio}/contact", array_merge($this->sfidaRisolta($dominio), [
             'name' => 'Giulia Bianchi',
             'email' => 'giulia@example.com',
             'message' => 'Vorrei un preventivo.',
@@ -143,9 +168,9 @@ class ContattoTest extends TestCase
      */
     public function test_la_risposta_porta_le_intestazioni_cors(): void
     {
-        $this->postJson("/api/public/a.test/contact", [
+        $this->postJson("/api/public/a.test/contact", array_merge($this->sfidaRisolta('a.test'), [
             'name' => 'G', 'email' => 'g@example.com', 'message' => 'ciao',
-        ], ['Origin' => 'https://a.test'])
+        ]), ['Origin' => 'https://a.test'])
             ->assertOk()
             ->assertHeader('Access-Control-Allow-Origin', '*');
     }

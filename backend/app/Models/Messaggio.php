@@ -18,6 +18,8 @@ class Messaggio extends Model
     protected $table = 'messaggi';
 
     protected $fillable = [
+        'modulo_id',
+        'dati',
         'nome',
         'email',
         'messaggio',
@@ -29,7 +31,12 @@ class Messaggio extends Model
 
     protected function casts(): array
     {
-        return ['letto_il' => 'datetime'];
+        return ['letto_il' => 'datetime', 'dati' => 'array'];
+    }
+
+    public function modulo(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Modulo::class);
     }
 
     public function scopeDaLeggere(Builder $query): Builder

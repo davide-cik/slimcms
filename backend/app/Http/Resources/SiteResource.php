@@ -35,6 +35,10 @@ class SiteResource extends JsonResource
             // Normalizzato qui: Astro non deve ripetere la stessa validazione
             // per poi divergere alla prima modifica.
             'base_blog' => $this->baseBlog(),
+
+            // Come disegnare il captcha. Solo la parte pubblica: il segreto
+            // resta nel backend, che e' l'unico posto in cui serve.
+            'captcha' => \App\Support\Captcha\FabbricaCaptcha::per($this->resource)->perIlSito(),
         ];
     }
 }

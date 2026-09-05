@@ -8,6 +8,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -42,6 +43,11 @@ class MessaggiTable
                     ->wrap()
                     ->searchable(),
 
+                TextColumn::make('modulo.nome')
+                    ->label('Modulo')
+                    ->placeholder('—')
+                    ->badge(),
+
                 TextColumn::make('pagina')
                     ->label('Dalla pagina')
                     ->placeholder('—')
@@ -54,6 +60,10 @@ class MessaggiTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('modulo_id')
+                    ->label('Modulo')
+                    ->relationship('modulo', 'nome'),
+
                 Filter::make('da_leggere')
                     ->label('Solo da leggere')
                     ->query(fn (Builder $query) => $query->daLeggere())

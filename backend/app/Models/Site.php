@@ -33,6 +33,9 @@ class Site extends Model implements HasMedia
         'name',
         'logo_path',
         'contact_email',
+        'captcha_fornitore',
+        'captcha_chiave_pubblica',
+        'captcha_segreto',
         'favicon_path',
         'favicon_initials',
         'og_config',
@@ -50,6 +53,9 @@ class Site extends Model implements HasMedia
     protected function casts(): array
     {
         return [
+            // Cifrato a riposo: chi legge il database non deve poter usare
+            // il captcha di un cliente.
+            'captcha_segreto' => 'encrypted',
             'theme' => 'array',
             'seo_defaults' => 'array',
             'og_config' => 'array',
