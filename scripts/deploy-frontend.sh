@@ -244,7 +244,14 @@ fi
 [[ -d "$DOCROOT" ]] || errore "document root inesistente: $DOCROOT"
 
 log "Pubblicazione su $DOCROOT"
-rsync -a --delete dist/ "$DOCROOT/"
+# --delay-updates: rsync scrive le versioni nuove di fianco alle vecchie e le
+# mette al loro posto tutte insieme alla fine. Senza, durante la copia il sito
+# serve un misto di file vecchi e nuovi, e per qualche istante l'index.html
+# puo' essere scritto a meta': la verifica dopo la pubblicazione ha fallito
+# esattamente cosi', dicendo che la home non conteneva un frammento che c'era.
+# Un deploy buono bocciato e' il problema minore — il problema vero e' che in
+# quella finestra la stessa pagina la vede un visitatore.
+rsync -a --delete --delay-updates dist/ "$DOCROOT/"
 find "$DOCROOT" -type d -exec chmod 755 {} \;
 find "$DOCROOT" -type f -exec chmod 644 {} \;
 
@@ -252,8 +259,17 @@ log "Verifica del sito pubblicato"
 codice=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$SITO/" || echo 000)
 [[ "$codice" == "200" ]] || errore "$SITO/ risponde $codice dopo la pubblicazione."
 
-curl -sS -m 20 "$SITO/" | grep -q "${ATTESI[0]}" \
-  || errore "il sito pubblicato non contiene \"${ATTESI[0]}\"."
+# Tre tentativi a un secondo di distanza. Con --delay-updates la finestra e'
+# quasi chiusa, ma "quasi" su una verifica che boccia un deploy buono vuol dire
+# che prima o poi qualcuno smette di fidarsi del gate — ed e' il gate che il
+# 2026-09-04 ha impedito di ripubblicare un sito vuoto.
+for tentativo in 1 2 3; do
+  if curl -sS -m 20 "$SITO/" | grep -q "${ATTESI[0]}"; then
+    break
+  fi
+  [[ $tentativo -lt 3 ]] || errore "il sito pubblicato non contiene \"${ATTESI[0]}\"."
+  sleep 1
+done
 
 echo "    $SITO/ -> HTTP 200, contenuto verificato"
 
