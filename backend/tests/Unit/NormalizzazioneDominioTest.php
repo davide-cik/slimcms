@@ -50,4 +50,23 @@ class NormalizzazioneDominioTest extends TestCase
     {
         $this->assertNull(SiteResource::normalizzaDominio('', null));
     }
+
+    /**
+     * Il `www.` va tolto davvero.
+     *
+     * `RisolviSitoDaParametro` lo toglie dall'indirizzo in arrivo e confronta
+     * con `sites.domain`: un sito salvato come `www.cliente.it` non verrebbe
+     * trovato da nessuna richiesta, e il sintomo sarebbe un 404 su tutto
+     * senza niente di rotto da nessuna parte. Prima era solo scritto nel
+     * testo d'aiuto del campo.
+     */
+    public function test_toglie_www_e_schema(): void
+    {
+        $this->assertSame('cliente.it', SiteResource::normalizzaDominio('www.cliente.it'));
+        $this->assertSame('cliente.it', SiteResource::normalizzaDominio('https://www.Cliente.it/'));
+        $this->assertSame('cliente.it', SiteResource::normalizzaDominio('http://cliente.it'));
+
+        // Un sottodominio che si chiama davvero cosi' non va mutilato.
+        $this->assertSame('wwwx.cliente.it', SiteResource::normalizzaDominio('wwwx.cliente.it'));
+    }
 }

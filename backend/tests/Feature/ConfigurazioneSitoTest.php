@@ -2,20 +2,28 @@
 
 namespace Tests\Feature;
 
-use App\ControlPlane\Filament\Resources\Sites\Pages\EditSite;
-use App\ControlPlane\Models\AdminUser;
+use App\Filament\Pages\Tenancy\ImpostazioniSito;
 use App\Models\BuildRequest;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\Tenant;
+use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Tutto il sito sta nel CMS: testata, footer, verifiche webmaster e
- * analytics si configurano dal pannello, non si cablano nel layout Astro.
+ * Tutto il sito sta nel CMS, e nel pannello DEL SITO.
+ *
+ * Testata, footer, verifiche webmaster e analytics non si cablano nel layout
+ * Astro — e non stanno nemmeno nel control plane, dove per un po' sono
+ * rimaste: chi abita un sito deve poter cambiare la propria testata senza
+ * chiederlo a noi. Nel control plane resta il ciclo di vita del sito.
+ *
+ * Il test entra quindi come **amministratore del sito**, non come
+ * amministratore di piattaforma: e' l'unico modo di verificare che la
+ * configurazione sia dove il cliente la puo' davvero raggiungere.
  *
  * Il test monta il form davvero invece di ispezionarne lo schema: e' l'unico
  * modo di accorgersi che un campo annidato (layout_config.voci.*) non viene
@@ -36,15 +44,20 @@ class ConfigurazioneSitoTest extends TestCase
         $tenant = Tenant::create(['id' => 'c', 'name' => 'C', 'slug' => 'c', 'status' => 'active', 'plan_id' => $piano->id]);
         $this->site = Site::withoutTenancy()->create(['tenant_id' => $tenant->id, 'domain' => 'c.test', 'name' => 'C']);
 
-        $admin = AdminUser::create(['name' => 'A', 'email' => 'a@a.it', 'password' => bcrypt('x'), 'role' => 'super-admin']);
+        $admin = User::withoutSitePivotScope()->create([
+            'name' => 'A', 'email' => 'a@a.it', 'password' => bcrypt('x'),
+        ]);
+        $admin->sites()->attach($this->site, ['role' => 'admin']);
 
-        $this->actingAs($admin, 'manage');
-        Filament::setCurrentPanel('manage');
+        $this->actingAs($admin);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($this->site, isQuiet: true);
+        $this->site->useAsCurrent();
     }
 
     private function modifica(array $dati): void
     {
-        Livewire::test(EditSite::class, ['record' => $this->site->getRouteKey()])
+        Livewire::test(ImpostazioniSito::class)
             ->fillForm($dati)
             ->call('save')
             ->assertHasNoFormErrors();
@@ -72,7 +85,7 @@ class ConfigurazioneSitoTest extends TestCase
 
         preg_match_all("/'([a-z]+)'/", $trovato[1], $inAstro);
 
-        $componente = Livewire::test(EditSite::class, ['record' => $this->site->getRouteKey()]);
+        $componente = Livewire::test(ImpostazioniSito::class);
         $radio = $componente->instance()->form->getComponent(
             fn ($c) => $c instanceof \Filament\Forms\Components\Radio && $c->getName() === 'layout_config.tipo'
         );
@@ -140,7 +153,7 @@ class ConfigurazioneSitoTest extends TestCase
 
     public function test_un_id_analytics_sbagliato_viene_rifiutato(): void
     {
-        Livewire::test(EditSite::class, ['record' => $this->site->getRouteKey()])
+        Livewire::test(ImpostazioniSito::class)
             ->fillForm(['seo_defaults.analytics.ga4' => 'UA-12345-1'])
             ->call('save')
             ->assertHasFormErrors(['seo_defaults.analytics.ga4']);

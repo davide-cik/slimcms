@@ -916,6 +916,49 @@ non sulla sola presenza della chiave di sessione: così poggia su un fatto regis
 verificabile a posteriori. Segreto TOTP e codici di recupero sono **cifrati a riposo**
 (`'encrypted'` cast): chi legge il database non deve poter rigenerare i codici di nessuno.
 
+## Dove sta cosa: control plane o pannello del sito
+
+Il confine e' uno solo e si spiega in una riga: **nel control plane il ciclo di vita del
+sito, nel pannello del sito tutto il resto.**
+
+| Control plane (`/manage/sites`) | Pannello del sito (`Impostazioni del sito`) |
+|---|---|
+| a chi appartiene (`tenant_id`) | nome del sito |
+| dominio | testata e menu |
+| stato di DNS e certificato | footer, blog, doppio registro |
+| creazione, sospensione, cancellazione | area webmaster, statistiche |
+| | immagine di condivisione, favicon |
+| | moduli e verifica anti-spam |
+
+Per un po' testata, footer, blog, area webmaster, statistiche e immagine di condivisione
+sono stati nel control plane, in mezzo al cliente e al piano: cambiarsi la propria testata
+voleva dire chiederlo a noi. Chi abita un sito e' autonomo su tutto quello che il sito
+mostra; noi lo creiamo, lo sospendiamo, lo cancelliamo.
+
+Il **nome del sito** e' `visibleOn('create')` nel control plane: un sito senza nome non si
+puo' creare, ma dopo il nome e' suo. E' l'unico campo che compare in tutti e due i posti, e
+solo perche' i due momenti sono diversi.
+
+`CicloDiVitaSitoTest` fissa il confine **nei due sensi**: quello che deve restare nel
+control plane, e quello che non deve tornarci. Al negativo serve quanto al positivo — se un
+giorno una sezione rientrasse, il cliente ricomincerebbe a chiedere a noi di cambiarsi la
+testata senza che nessun test se ne accorga.
+
+La pagina e' `EditTenantProfile` e l'accesso passa da `SitePolicy` (`admin` sul sito):
+`EditTenantProfile::canView()` chiede `authorize('update', $tenant)`.
+
+### `sites.domain` si normalizza prima di essere validato
+
+Minuscolo, senza spazi, senza schema e **senza `www.`**. Il `www.` non e' cosmetica:
+`RisolviSitoDaParametro` lo toglie dall'indirizzo in arrivo e confronta con questa colonna,
+quindi un sito salvato come `www.cliente.it` non verrebbe trovato da nessuna richiesta — e
+il sintomo sarebbe un 404 su tutto, senza niente di rotto da nessuna parte. Prima era solo
+scritto nel testo d'aiuto del campo.
+
+La pulizia avviene **uscendo dal campo**, non al salvataggio: la regola `regex` gira sullo
+stato del campo, quindi normalizzando solo in `dehydrateStateUsing` uno spazio di troppo o
+una maiuscola diventavano "formato non valido" invece di essere semplicemente tolti.
+
 ## Anteprima di una pagina
 
 Una bozza **non esiste** sul sito: il sito e' statico e contiene solo cio' che e'
