@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\StatoSito;
 use App\Models\Redirect;
 use Illuminate\Support\Collection;
 
@@ -22,11 +23,22 @@ class GeneratoreHtaccess
     /** Il gestore della pagina d'errore, generato nel sito dalla build. */
     public const GESTORE_404 = 'slimcms-404.php';
 
+    /** La pagina mostrata quando il sito e' sospeso o parcheggiato. */
+    public const CORTESIA = 'slimcms-cortesia.html';
+
     /**
      * @param  Collection<int, Redirect>  $redirect
      */
-    public function genera(Collection $redirect): string
+    public function genera(Collection $redirect, ?StatoSito $stato = null): string
     {
+        // Un sito sospeso o parcheggiato non serve i propri contenuti: tutto
+        // risponde 503 con la pagina di cortesia, redirect compresi. Prima
+        // dei redirect, non dopo: un sito fermo non deve mandare il
+        // visitatore da nessuna parte.
+        if (($stato ?? StatoSito::Attivo)->mostraCortesia()) {
+            return $this->cortesia();
+        }
+
         $regole = $this->appiattisci(
             $redirect
                 ->filter(fn (Redirect $r) => $r->attivo)
@@ -79,6 +91,44 @@ class GeneratoreHtaccess
         }
 
         return implode("\n", $righe) . "\n";
+    }
+
+    /**
+     * Il file di un sito fermo: 503 su tutto, con la pagina di cortesia.
+     *
+     * **503 e non 200.** Un 200 direbbe ai motori "questo e' il contenuto
+     * adesso", e si ritroverebbero indicizzata la pagina di attesa al posto
+     * del sito; 503 dice "temporaneamente non disponibile, ripassa", che e'
+     * esattamente cosa sta succedendo. Verificato su Apache 2.4 di questo
+     * server: `[R=503]` risponde 503 servendo l'`ErrorDocument`, senza
+     * redirect e senza anelli.
+     *
+     * La condizione che esclude la pagina stessa non e' un dettaglio: senza,
+     * l'`ErrorDocument` verrebbe a sua volta intercettato e Apache
+     * risponderebbe 503 con un corpo vuoto.
+     *
+     * Nota onesta: nginx serve da solo i file con estensione nota, quindi un
+     * foglio di stile o un'immagine gia' pubblicati restano scaricabili da
+     * chi ne conosce l'indirizzo esatto. Nessuna pagina li cita piu' e ogni
+     * indirizzo navigabile risponde 503; toglierli davvero vorrebbe dire
+     * svuotare la cartella, e allora riattivare un sito non sarebbe piu'
+     * immediato.
+     */
+    private function cortesia(): string
+    {
+        return implode("\n", [
+            '# Generato da SlimCMS: non modificare a mano, viene riscritto a ogni',
+            '# pubblicazione. Questo sito e\' sospeso o parcheggiato dal pannello',
+            '# di gestione: risponde 503 con la pagina di cortesia.',
+            '',
+            'ErrorDocument 503 /' . self::CORTESIA,
+            '',
+            '<IfModule mod_rewrite.c>',
+            'RewriteEngine On',
+            'RewriteCond %{REQUEST_URI} !^/' . preg_quote(self::CORTESIA, '/') . '$',
+            'RewriteRule ^ - [R=503,L]',
+            '</IfModule>',
+        ]) . "\n";
     }
 
     /**

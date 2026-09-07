@@ -947,6 +947,55 @@ testata senza che nessun test se ne accorga.
 La pagina e' `EditTenantProfile` e l'accesso passa da `SitePolicy` (`admin` sul sito):
 `EditTenantProfile::canView()` chiede `authorize('update', $tenant)`.
 
+### Sospendere e parcheggiare un sito
+
+`sites.stato`: `attivo`, `parcheggiato`, `sospeso`. E' del control plane — chi abita il
+sito decide cosa il sito mostra, non se il sito c'e'. `tenants` aveva gia' uno stato, ma e'
+del **cliente**: un cliente puo' avere dieci siti e volerne fermare uno.
+
+I due stati fermi fanno la stessa cosa tecnica e sono due valori distinti perche' dicono
+due cose diverse a chi guarda il pannello e mostrano due testi diversi a chi arriva: un
+sito parcheggiato non e' un sito con un problema.
+
+**Il sito e' statico, quindi fermarlo non puo' essere un controllo in Laravel.** E' una
+riga di `.htaccess`: `GeneratoreHtaccess` emette `ErrorDocument 503 /slimcms-cortesia.html`
+piu' una `RewriteRule ^ - [R=503,L]`, e lo fa **prima** dei redirect — un sito fermo non
+manda il visitatore da nessuna parte. Verificato su Apache 2.4 di questo server prima di
+scriverlo: `[R=503]` risponde 503 servendo l'`ErrorDocument`, senza redirect e senza
+anelli. La `RewriteCond` che esclude la pagina stessa non e' un dettaglio: senza,
+l'`ErrorDocument` verrebbe intercettato a sua volta e Apache risponderebbe 503 con un corpo
+vuoto.
+
+**503 e non 200.** Un 200 direbbe ai motori "questo e' il contenuto adesso" e si
+ritroverebbero indicizzata la pagina di attesa al posto del sito.
+
+La pagina di cortesia si genera **sempre**, anche a sito attivo: e' mezzo kilobyte, e
+averla gia' li' vuol dire che sospendere e' una riga di `.htaccess` che cambia, non una
+pubblicazione che deve riuscire mentre si sta cercando di fermare qualcosa. Gli stili sono
+in linea, cosi' regge anche senza il foglio di stile del sito. Non dice mai **perche'** il
+sito e' fermo: a chi arriva non interessa, e sarebbe un fatto privato del cliente scritto
+su una pagina pubblica. La `nota_cortesia` e' facoltativa e il campo lo dice.
+
+Il cambio di stato accoda una build da solo (`SiteObserver` accoda su ogni colonna non
+operativa): e' quella che riscrive l'`.htaccess`. Il gate di deploy sa riconoscere un sito
+fermo e pretende **503** invece di 200 — senza, pubblicare un sito sospeso fallirebbe
+proprio quando serve.
+
+Nota onesta: nginx serve da solo i file con estensione nota, quindi un foglio di stile o
+un'immagine gia' pubblicati restano scaricabili da chi ne conosce l'indirizzo esatto.
+Nessuna pagina li cita piu' e ogni indirizzo navigabile risponde 503; toglierli davvero
+vorrebbe dire svuotare la cartella, e allora riattivare non sarebbe piu' immediato.
+
+### Trappola: il cast enum fa esplodere la lettura, non solo la scrittura
+
+`sites.stato` **non** ha un cast enum, contro la convenzione di CLAUDE.md, e per una
+ragione verificata: il cast di Laravel alza `ValueError` in **lettura** se il valore non e'
+fra quelli previsti. Un dato storto in quella colonna renderebbe illeggibile l'intero
+modello `Site` — via il pannello, via l'API, via il sito. Uno stato che non si riesce a
+leggere non deve spegnere il sito di un cliente: `Site::statoSito()` e' l'unico punto di
+conversione e ricade su `Attivo`. Nessuno confronta la stringa a mano, che era poi lo scopo
+della convenzione.
+
 ### `sites.domain` si normalizza prima di essere validato
 
 Minuscolo, senza spazi, senza schema e **senza `www.`**. Il `www.` non e' cosmetica:

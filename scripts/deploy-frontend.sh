@@ -165,6 +165,20 @@ echo "    open graph: tutte le anteprime presenti"
 
 echo "    immagini: tutte presenti"
 
+# La pagina di cortesia c'e' sempre, anche a sito attivo: sospendere un sito
+# dev'essere una riga di .htaccess che cambia, non una pubblicazione che deve
+# andare a buon fine mentre si sta cercando di fermare qualcosa.
+[[ -s dist/slimcms-cortesia.html ]] || errore "dist/slimcms-cortesia.html assente: un sito sospeso mostrerebbe il 503 dell'hosting."
+
+# Un sito fermo: l'.htaccess manda tutto sulla pagina di cortesia con 503.
+SITO_FERMO=0
+if grep -q 'R=503' dist/.htaccess 2>/dev/null; then
+  SITO_FERMO=1
+  grep -q "ErrorDocument 503 /slimcms-cortesia.html" dist/.htaccess \
+    || errore ".htaccess con 503 ma senza ErrorDocument: il visitatore vedrebbe una pagina vuota."
+  echo "    stato: SITO FERMO — verra' pubblicata la pagina di cortesia"
+fi
+
 # Il contatore delle visite: se manca il file o la pagina non lo cita, le
 # statistiche restano a zero e nessuno se ne accorge finche' non le guarda.
 [[ -s dist/slimcms-vista.php ]] || errore "dist/slimcms-vista.php assente: nessuna visita verrebbe contata."
@@ -257,6 +271,19 @@ find "$DOCROOT" -type f -exec chmod 644 {} \;
 
 log "Verifica del sito pubblicato"
 codice=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$SITO/" || echo 000)
+
+if [[ "$SITO_FERMO" == "1" ]]; then
+  # Un sito sospeso o parcheggiato DEVE rispondere 503: un 200 vorrebbe dire
+  # che la regola non ha preso, e i motori indicizzerebbero la pagina di
+  # attesa al posto del sito.
+  [[ "$codice" == "503" ]] || errore "$SITO/ risponde $codice: il sito e' fermo e doveva rispondere 503."
+  curl -sS -m 20 "$SITO/" | grep -q 'name="robots" content="noindex' \
+    || errore "la pagina di cortesia non e' quella attesa."
+  echo "    $SITO/ -> HTTP 503, pagina di cortesia servita"
+  log "Fatto."
+  exit 0
+fi
+
 [[ "$codice" == "200" ]] || errore "$SITO/ risponde $codice dopo la pubblicazione."
 
 # Tre tentativi a un secondo di distanza. Con --delay-updates la finestra e'

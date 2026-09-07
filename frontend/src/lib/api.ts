@@ -156,6 +156,10 @@ export interface Sito {
   // Come disegnare la verifica anti-spam. Solo la parte pubblica: il segreto
   // resta nel backend.
   captcha?: { tipo: 'semplice' | 'turnstile' | 'recaptcha' | 'nessuno'; chiave?: string | null };
+  // Ciclo di vita: un sito non attivo pubblica una pagina di cortesia e
+  // l'.htaccess risponde 503 su tutto il resto.
+  stato?: 'attivo' | 'parcheggiato' | 'sospeso';
+  cortesia?: { titolo: string; testo: string; nota?: string | null };
   theme: Record<string, unknown>;
   seo_defaults: SeoDiSito;
   og_config: Record<string, unknown>;

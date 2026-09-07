@@ -36,6 +36,16 @@ class SiteResource extends JsonResource
             // per poi divergere alla prima modifica.
             'base_blog' => $this->baseBlog(),
 
+            // Lo stato del ciclo di vita: la build ne ricava la pagina di
+            // cortesia. Il testo predefinito viene di qui e non dal frontend
+            // perche' e' lo stesso che il pannello mostra in anteprima.
+            'stato' => $this->statoSito()->value,
+            'cortesia' => [
+                'titolo' => $this->statoSito()->titoloCortesia(),
+                'testo' => $this->statoSito()->testoCortesia(),
+                'nota' => $this->nota_cortesia,
+            ],
+
             // Come disegnare il captcha. Solo la parte pubblica: il segreto
             // resta nel backend, che e' l'unico posto in cui serve.
             'captcha' => \App\Support\Captcha\FabbricaCaptcha::per($this->resource)->perIlSito(),

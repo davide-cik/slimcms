@@ -26,7 +26,10 @@ class SiteRedirectController extends Controller
     {
         // Nessun where sul sito: il middleware ha gia' fissato quello
         // corrente e il global scope filtra (contratto API, CLAUDE.md).
-        $contenuto = $generatore->genera(Redirect::orderBy('da')->get());
+        // Lo stato del sito decide prima di ogni redirect: un sito sospeso o
+        // parcheggiato risponde 503 con la pagina di cortesia, e non manda il
+        // visitatore da nessuna parte.
+        $contenuto = $generatore->genera(Redirect::orderBy('da')->get(), $site->statoSito());
 
         return response($contenuto, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
     }

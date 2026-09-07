@@ -8,15 +8,18 @@ use App\Models\User;
 use Filament\Actions\Action as AzioneRiga;
 use App\Models\Page;
 use App\Models\Site;
+use App\Enums\StatoSito;
 use App\Services\StatoDominio;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -114,6 +117,29 @@ class SiteResource extends Resource
                     ->visibleOn('create'),
             ])->columns(2),
 
+            Section::make('Stato del sito')
+                ->description('Se il sito e\' online, in attesa o fermo. Lo decide la piattaforma: '
+                    . 'chi abita il sito cambia quello che il sito mostra, non se il sito c\'e\'.')
+                ->schema([
+                    Radio::make('stato')
+                        ->label('Stato')
+                        ->options(StatoSito::opzioni())
+                        ->descriptions(collect(StatoSito::cases())
+                            ->mapWithKeys(fn (StatoSito $x) => [$x->value => $x->descrizione()])->all())
+                        ->default(StatoSito::Attivo->value)
+                        ->required()
+                        ->live(),
+
+                    TextInput::make('nota_cortesia')
+                        ->label('Riga in piu\' sulla pagina di attesa')
+                        ->maxLength(200)
+                        ->placeholder('Torniamo online il 12 marzo')
+                        ->visible(fn (Get $get): bool => $get('stato') !== StatoSito::Attivo->value)
+                        // Il motivo non si scrive mai: e' un fatto privato del
+                        // cliente, e la pagina e' pubblica.
+                        ->helperText('Facoltativa, e visibile a chiunque: non scriverci il motivo.'),
+                ])->columns(1),
+
             Section::make('Stato del dominio')
                 ->visibleOn('edit')
                 ->schema([
@@ -170,6 +196,17 @@ class SiteResource extends Resource
                 TextColumn::make('domain')->label('Dominio')->searchable()->sortable()->weight('medium')
                     ->url(fn (Site $record): string => 'https://' . $record->domain)
                     ->openUrlInNewTab(),
+
+                // Lo stato prima del nome: se un sito e' fermo, e' la prima
+                // cosa da sapere guardando l'elenco.
+                TextColumn::make('stato')
+                    ->label('Stato')
+                    ->badge()
+                    ->formatStateUsing(fn (Site $record): string => $record->statoSito()->etichetta())
+                    ->color(fn (Site $record): string => $record->statoSito()->colore())
+                    // Un sito attivo e' la normalita': mostrare un badge verde
+                    // su ogni riga fa rumore e basta.
+                    ->visible(fn (): bool => Site::withoutTenancy()->where('stato', '!=', StatoSito::Attivo->value)->exists()),
 
                 TextColumn::make('name')->label('Nome')->searchable()->color('gray')
                     // Su telefono restano dominio e certificato: il resto e'
@@ -268,6 +305,41 @@ class SiteResource extends Resource
                         );
 
                         return redirect()->route('impersona.entra', $imp->token);
+                    }),
+
+                // Fermare un sito e' una cosa che si fa di fretta: due clic
+                // dall'elenco, senza passare dal form.
+                Action::make('ferma')
+                    ->label(fn (Site $record): string => $record->mostraCortesia() ? 'Riattiva' : 'Sospendi')
+                    ->icon(fn (Site $record): string => $record->mostraCortesia()
+                        ? 'heroicon-o-play'
+                        : 'heroicon-o-pause')
+                    ->color(fn (Site $record): string => $record->mostraCortesia() ? 'success' : 'danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (Site $record): string => $record->mostraCortesia()
+                        ? 'Rimettere online ' . $record->domain . '?'
+                        : 'Sospendere ' . $record->domain . '?')
+                    ->modalDescription(fn (Site $record): string => $record->mostraCortesia()
+                        ? 'Il sito torna raggiungibile alla prossima pubblicazione, entro un minuto.'
+                        : 'I visitatori vedranno una pagina di attesa. I contenuti restano nel pannello, '
+                            . 'e il cliente continua a vederli.')
+                    ->action(function (Site $record): void {
+                        // Il cambio di stato accoda da solo una build
+                        // (SiteObserver): e' quella che riscrive l'.htaccess
+                        // e mette — o toglie — la pagina di cortesia.
+                        $record->forceFill([
+                            'stato' => $record->mostraCortesia()
+                                ? StatoSito::Attivo->value
+                                : StatoSito::Sospeso->value,
+                        ])->save();
+
+                        Notification::make()
+                            ->title($record->domain)
+                            ->body($record->mostraCortesia()
+                                ? 'Sospeso. La pagina di attesa comparira\' entro un minuto.'
+                                : 'Riattivato. Il sito torna online entro un minuto.')
+                            ->success()
+                            ->send();
                     }),
 
                 Action::make('verifica')

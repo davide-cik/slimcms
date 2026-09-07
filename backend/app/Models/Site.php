@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StatoSito;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -32,6 +33,8 @@ class Site extends Model implements HasMedia
         'domain',
         'name',
         'logo_path',
+        'stato',
+        'nota_cortesia',
         'contact_email',
         'captcha_fornitore',
         'captcha_chiave_pubblica',
@@ -110,6 +113,31 @@ class Site extends Model implements HasMedia
      * dalle iniziali. Non c'e' un terzo caso "nessuna favicon": una scheda
      * senza icona e' peggio di una generata, e generarla non costa nulla.
      */
+    /**
+     * Lo stato del sito, come enum.
+     *
+     * La colonna **non** ha un cast enum, contro la convenzione di CLAUDE.md,
+     * e per una ragione verificata: il cast di Laravel alza `ValueError` in
+     * **lettura** se il valore non e' fra quelli previsti, quindi un dato
+     * storto in quella colonna renderebbe illeggibile l'intero modello — via
+     * il pannello, via l'API, via il sito. Uno stato che non si riesce a
+     * leggere non deve spegnere il sito di un cliente: si ricade su `Attivo`,
+     * che e' la risposta prudente.
+     *
+     * Questo e' l'unico punto in cui la colonna diventa un enum: nessuno
+     * confronta la stringa a mano, che era poi lo scopo della convenzione.
+     */
+    public function statoSito(): StatoSito
+    {
+        return StatoSito::tryFrom((string) $this->stato) ?? StatoSito::Attivo;
+    }
+
+    /** Al posto del sito il visitatore vede una pagina di cortesia. */
+    public function mostraCortesia(): bool
+    {
+        return $this->statoSito()->mostraCortesia();
+    }
+
     public function faviconSvg(): string
     {
         return app(\App\Services\GeneratoreFavicon::class)->svg($this);
