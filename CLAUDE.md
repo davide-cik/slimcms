@@ -981,10 +981,19 @@ operativa): e' quella che riscrive l'`.htaccess`. Il gate di deploy sa riconosce
 fermo e pretende **503** invece di 200 — senza, pubblicare un sito sospeso fallirebbe
 proprio quando serve.
 
-Nota onesta: nginx serve da solo i file con estensione nota, quindi un foglio di stile o
-un'immagine gia' pubblicati restano scaricabili da chi ne conosce l'indirizzo esatto.
-Nessuna pagina li cita piu' e ogni indirizzo navigabile risponde 503; toglierli davvero
-vorrebbe dire svuotare la cartella, e allora riattivare non sarebbe piu' immediato.
+**Il 503 vale su tutto**, non solo sulle pagine: fogli di stile, font, immagini, sitemap,
+`robots.txt`. Ci si arriva pubblicando **solo** la pagina di cortesia e l'`.htaccess` —
+`rsync --delete` porta via il resto — e sfruttando una cosa che il template di Hestia fa
+gia': la `location` degli statici e' `try_files $uri @fallback`, quindi un file **mancante**
+non lo chiude nginx, lo passa ad Apache, che applica l'`.htaccess`. Verificato sul sito
+vero, sospeso e riattivato: 503 su undici indirizzi di ogni tipo, e sul disco restano due
+file.
+
+Per un po' qui c'era scritto il contrario — che gli asset gia' pubblicati restavano
+scaricabili. Era vero finche' i file restavano sul disco; una volta tolti, la catena
+`try_files` fa il resto. Non serve nessuna direttiva nginx e nessun intervento da root.
+
+I contenuti non si perdono: sono nel database, e riattivare e' una build.
 
 ### Trappola: il cast enum fa esplodere la lettura, non solo la scrittura
 
