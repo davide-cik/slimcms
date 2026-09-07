@@ -272,7 +272,28 @@ log "Pubblicazione su $DOCROOT"
 # esattamente cosi', dicendo che la home non conteneva un frammento che c'era.
 # Un deploy buono bocciato e' il problema minore — il problema vero e' che in
 # quella finestra la stessa pagina la vede un visitatore.
-rsync -a --delete --delay-updates dist/ "$DOCROOT/"
+# Un sito fermo non pubblica i propri contenuti: nella document root restano
+# la pagina di cortesia e l'.htaccess, e basta.
+#
+# Non e' pedanteria sopra il 503. nginx serve da solo i file con estensione
+# nota e non passa ad Apache, quindi finche' un foglio di stile o una foto
+# restano su disco sono scaricabili da chi ne conosce l'indirizzo esatto,
+# .htaccess o no. Togliendoli non resta niente da servire — quelle richieste
+# diventano un 404 di nginx, che non passa da noi.
+#
+# I contenuti non si perdono: sono nel database, e riattivare il sito e' una
+# build.
+ORIGINE="dist/"
+
+if [[ "$SITO_FERMO" == "1" ]]; then
+  STAGING="$(mktemp -d)"
+  trap 'rm -rf "$STAGING"' EXIT
+  cp dist/slimcms-cortesia.html dist/.htaccess "$STAGING/"
+  ORIGINE="$STAGING/"
+  echo "    pubblico solo la pagina di cortesia: niente contenuti sul disco"
+fi
+
+rsync -a --delete --delay-updates "$ORIGINE" "$DOCROOT/"
 find "$DOCROOT" -type d -exec chmod 755 {} \;
 find "$DOCROOT" -type f -exec chmod 644 {} \;
 

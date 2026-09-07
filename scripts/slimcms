@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# Un comando solo per le operazioni del progetto, invocabile da QUALUNQUE
+# cartella.
+#
+# Esiste per un guasto vero: `./scripts/deploy-frontend.sh` lanciato da una
+# directory sbagliata non e' partito, e siccome l'output era infilato in una
+# `grep` non si e' visto ne' l'errore ne' l'exit code. Il sito e' rimasto
+# sulla pagina di cortesia piu' del necessario. Il percorso relativo e' meta'
+# della causa; questa meta' la toglie di mezzo.
+#
+# Uso, da ovunque:
+#   slimcms deploy            backend + frontend, in quest'ordine
+#   slimcms deploy-backend
+#   slimcms deploy-frontend [--dry-run]
+#   slimcms test              suite completa + riseed (il test azzera il DB)
+#   slimcms stato             dove siamo: git, versione, produzione
+
+set -Eeuo pipefail
+
+# Il repository si risolve dal percorso di QUESTO file, non dalla cartella
+# corrente: e' tutto il punto.
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+
+grassetto() { printf '\033[1m==>\033[0m %s\n' "$*"; }
+errore()    { printf '\033[31mERRORE:\033[0m %s\n' "$*" >&2; exit 1; }
+
+comando="${1:-}"; shift || true
+
+case "$comando" in
+  deploy)
+    "$REPO/scripts/deploy-backend.sh"
+    "$REPO/scripts/deploy-frontend.sh" "$@"
+    ;;
+
+  deploy-backend)
+    "$REPO/scripts/deploy-backend.sh" "$@"
+    ;;
+
+  deploy-frontend)
+    "$REPO/scripts/deploy-frontend.sh" "$@"
+    ;;
+
+  test)
+    # `php artisan test` azzera claudio_slimcms: il riseed non e' un extra,
+    # e' parte del comando. Dimenticarlo lascia lo sviluppo senza dati.
+    ( cd "$REPO/backend" && php artisan test "$@" && php artisan db:seed --force )
+    ;;
+
+  stato)
+    ( cd "$REPO" && git status --short && echo "  versione 0.0.$(git rev-list --count HEAD)" )
+    for u in https://slimcms.it/ https://manage.slimcms.it/admin/login; do
+      printf '  %-42s %s\n' "$u" "$(curl -s -o /dev/null -m 10 -w '%{http_code}' "$u")"
+    done
+    ;;
+
+  *)
+    errore "uso: slimcms {deploy|deploy-backend|deploy-frontend|test|stato}"
+    ;;
+esac
+
+# Una riga finale inequivocabile. Se non compare, il comando NON e' arrivato
+# in fondo — anche quando l'output finisce dentro una pipe che si mangia
+# tutto il resto.
+grassetto "slimcms $comando: completato"
