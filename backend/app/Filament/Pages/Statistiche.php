@@ -92,11 +92,35 @@ class Statistiche extends Page
             }
         }
 
+        // Il periodo precedente della stessa lunghezza: un numero da solo non
+        // dice se sta andando meglio o peggio, ed e' l'unica domanda che uno
+        // si fa guardando un totale.
+        $daPrima = $da->copy()->subDays($this->periodo);
+
+        $primaAccessi = (int) Vista::query()
+            ->whereBetween('giorno', [$daPrima, $da->copy()->subDay()])
+            ->sum('conteggio');
+
+        $primaPersone = VistaImpronta::query()
+            ->whereBetween('giorno', [$daPrima, $da->copy()->subDay()])
+            ->count();
+
+        $accessi = array_sum($totali);
+        $visitatori = VistaImpronta::query()->where('giorno', '>=', $da)->count();
+
         return [
             'giorni' => $giorni,
             'totali' => $totali,
+            'accessi' => $accessi,
+            // Il giorno piu' alto e' l'unico che riceve un'etichetta diretta:
+            // una cifra su ogni colonna non la legge nessuno.
+            'giornoPieno' => collect($giorni)->map(fn ($g) => array_sum($g))->sortDesc()->keys()->first(),
+            'variazione' => [
+                'accessi' => $this->variazione($accessi, $primaAccessi),
+                'persone' => $this->variazione($visitatori, $primaPersone),
+            ],
             'massimo' => max(1, max(array_map(fn ($g) => array_sum($g), $giorni) ?: [1])),
-            'visitatori' => VistaImpronta::query()->where('giorno', '>=', $da)->count(),
+            'visitatori' => $visitatori,
             'pagine' => Vista::query()
                 ->where('giorno', '>=', $da)
                 ->where('categoria', ClassificatoreAgente::UMANO)
@@ -122,6 +146,26 @@ class Statistiche extends Page
                 ->sum('conteggio'),
             'categorie' => ClassificatoreAgente::CATEGORIE,
         ];
+    }
+
+    /**
+     * La variazione rispetto al periodo precedente, in percentuale.
+     *
+     * `null` quando prima non c'era niente: da zero non si calcola una
+     * percentuale, e scrivere "+100%" sul primo giorno di raccolta e' un
+     * numero inventato.
+     *
+     * @return array{segno: int, percento: int}|null
+     */
+    private function variazione(int $ora, int $prima): ?array
+    {
+        if ($prima === 0) {
+            return null;
+        }
+
+        $delta = (int) round((($ora - $prima) / $prima) * 100);
+
+        return ['segno' => $ora <=> $prima, 'percento' => abs($delta)];
     }
 
     /** @return array<string, mixed> */

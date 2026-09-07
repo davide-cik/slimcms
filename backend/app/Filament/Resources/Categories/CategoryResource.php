@@ -22,6 +22,11 @@ class CategoryResource extends Resource
 
     protected static ?string $pluralModelLabel = 'categorie';
 
+    // Non nella barra laterale: si vedono e si modificano da «Tag e
+    // categorie», che le mostra tutte e due insieme. La risorsa resta con le
+    // sue rotte, il suo form e la sua policy.
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $navigationLabel = 'Categorie';
 
     protected static ?string $recordTitleAttribute = 'name';

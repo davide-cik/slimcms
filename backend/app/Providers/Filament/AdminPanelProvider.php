@@ -7,6 +7,9 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use App\Filament\Pages\Tenancy\ImpostazioniSito;
+use Filament\Navigation\NavigationItem;
+use Filament\Facades\Filament;
+use Filament\Support\Icons\Heroicon;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -60,6 +63,21 @@ class AdminPanelProvider extends PanelProvider
             // control plane: chi lo amministra deve poter cambiare la propria
             // icona senza chiederlo a noi. `SitePolicy` le riserva ad `admin`.
             ->tenantProfile(ImpostazioniSito::class)
+            // Filament mette il profilo del tenant nel menu in alto a destra,
+            // dove nessuno lo cerca: le impostazioni del proprio sito sono una
+            // voce come le altre e stanno nella barra laterale, in fondo.
+            // `visible` ripete la stessa condizione della pagina — chi non
+            // puo' aprirla non deve nemmeno vederla, altrimenti la voce c'e'
+            // e porta a un 404.
+            ->navigationItems([
+                NavigationItem::make('Impostazioni del sito')
+                    ->icon(Heroicon::OutlinedCog6Tooth)
+                    ->sort(99)
+                    ->url(fn (): string => Filament::getTenantProfileUrl())
+                    ->isActiveWhen(fn (): bool => request()->routeIs('filament.admin.tenant.profile'))
+                    ->visible(fn (): bool => Filament::getTenant() !== null
+                        && ImpostazioniSito::canView(Filament::getTenant())),
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
