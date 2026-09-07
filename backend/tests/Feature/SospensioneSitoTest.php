@@ -165,4 +165,25 @@ class SospensioneSitoTest extends TestCase
         $this->assertStringNotContainsString("make('stato'", $sorgente);
         $this->assertStringNotContainsString("make('nota_cortesia'", $sorgente);
     }
+
+    /**
+     * La pagina di cortesia la legge un visitatore, non chi usa il pannello.
+     *
+     * Nel PHP di questo progetto gli accenti si omettono; queste stringhe
+     * pero' attraversano il confine e finiscono su una pagina pubblica. La
+     * prima sospensione vera ha mostrato "e' temporaneamente" a chiunque
+     * passasse.
+     */
+    public function test_i_testi_visibili_al_visitatore_sono_in_italiano_vero(): void
+    {
+        foreach (StatoSito::cases() as $stato) {
+            foreach ([$stato->titoloCortesia(), $stato->testoCortesia()] as $testo) {
+                $this->assertDoesNotMatchRegularExpression(
+                    "/\b(e|puo|piu|perche|cosi|gia|sara|verra)'/u",
+                    $testo,
+                    "«{$testo}» usa l'apostrofo al posto dell'accento su una pagina pubblica."
+                );
+            }
+        }
+    }
 }

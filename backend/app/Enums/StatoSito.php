@@ -56,6 +56,12 @@ enum StatoSito: string
     /**
      * Il titolo predefinito della pagina di cortesia.
      *
+     * Da qui in giu' le stringhe le legge un VISITATORE, non chi usa il
+     * pannello: vanno scritte in italiano vero, accenti compresi. Nel resto
+     * del PHP di questo progetto gli accenti si omettono, ed e' la ragione
+     * per cui la prima sospensione ha mostrato "e' temporaneamente" su una
+     * pagina pubblica.
+     *
      * Non dice mai perche'. A chi arriva non interessa se il cliente non ha
      * pagato, e dirlo sarebbe un fatto privato del cliente scritto su una
      * pagina pubblica.
@@ -71,8 +77,8 @@ enum StatoSito: string
     public function testoCortesia(): string
     {
         return match ($this) {
-            self::Parcheggiato => 'Questo sito e\' in preparazione. Torna fra qualche giorno.',
-            default => 'Questo sito e\' temporaneamente non disponibile. Riprova piu\' tardi.',
+            self::Parcheggiato => 'Questo sito è in preparazione. Torna fra qualche giorno.',
+            default => 'Questo sito è temporaneamente non disponibile. Riprova più tardi.',
         };
     }
 

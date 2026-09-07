@@ -1078,6 +1078,11 @@ messaggio esplicito invece di saltarlo in silenzio.
 - Ogni nuova migrazione che crea una tabella di contenuto include la colonna di scoping
   **e** un indice su di essa.
 - Commenti e messaggi utente in italiano, nomi di codice in inglese.
+- Nel PHP gli accenti si omettono (`e'`, `puo'`), **tranne nelle stringhe che legge un
+  visitatore**: quelle vanno in italiano vero. La prima sospensione vera ha mostrato
+  «e' temporaneamente» su una pagina pubblica, perche' un testo destinato al sito era
+  scritto con l'abitudine del pannello. `SospensioneSitoTest` lo fissa per la pagina di
+  cortesia.
 
 ## SEO / GEO / AEO
 

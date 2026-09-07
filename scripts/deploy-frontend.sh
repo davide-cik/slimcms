@@ -222,14 +222,21 @@ echo "    favicon: /favicon.ico presente e valida$([[ -s dist/favicon.svg ]] && 
 # malformato Apache risponde 500 su TUTTO il sito, non solo sugli indirizzi
 # reindirizzati: e' il file piu' pericoloso che pubblichiamo.
 [[ -s dist/.htaccess ]] || errore "dist/.htaccess assente: l'integrazione non ha girato."
-grep -q '^ErrorDocument 404 /slimcms-404.php$' dist/.htaccess \
-  || errore ".htaccess senza ErrorDocument: i 404 mostrerebbero la pagina dell'hosting."
-[[ -s dist/404.html ]] || errore "dist/404.html assente, ma il gestore d'errore lo stampa."
-# Il gestore e' anche il monitoraggio: senza, i collegamenti rotti non si
-# saprebbero mai, perche' un 404 su un sito statico non lascia altra traccia.
-[[ -s dist/slimcms-404.php ]] || errore "dist/slimcms-404.php assente, ma il .htaccess ci punta."
-grep -q 'slimcms-404.jsonl' dist/slimcms-404.php \
-  || errore "il gestore d'errore non annota niente: il monitoraggio dei 404 sarebbe cieco."
+
+# Su un sito FERMO non c'e' nessun 404 da gestire: risponde 503 su tutto, e
+# il suo .htaccess porta ErrorDocument 503 al posto del 404. Questo controllo
+# ha bloccato la prima sospensione vera, che e' esattamente quello che deve
+# fare un gate quando non conosce un caso — ma il caso adesso lo conosce.
+if [[ "$SITO_FERMO" != "1" ]]; then
+  grep -q '^ErrorDocument 404 /slimcms-404.php$' dist/.htaccess \
+    || errore ".htaccess senza ErrorDocument: i 404 mostrerebbero la pagina dell'hosting."
+  [[ -s dist/404.html ]] || errore "dist/404.html assente, ma il gestore d'errore lo stampa."
+  # Il gestore e' anche il monitoraggio: senza, i collegamenti rotti non si
+  # saprebbero mai, perche' un 404 su un sito statico non lascia altra traccia.
+  [[ -s dist/slimcms-404.php ]] || errore "dist/slimcms-404.php assente, ma il .htaccess ci punta."
+  grep -q 'slimcms-404.jsonl' dist/slimcms-404.php \
+    || errore "il gestore d'errore non annota niente: il monitoraggio dei 404 sarebbe cieco."
+fi
 # Le direttive ammesse sono queste e basta: qualunque altra cosa in quel file
 # arriva da un percorso scritto da chi redige, e non deve poterci finire.
 if grep -vE '^\s*(#|$|ErrorDocument |RewriteEngine |RewriteCond |RewriteRule |</?IfModule)' dist/.htaccess; then
