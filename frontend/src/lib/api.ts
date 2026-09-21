@@ -160,6 +160,8 @@ export interface Sito {
   // l'.htaccess risponde 503 su tutto il resto.
   stato?: 'attivo' | 'parcheggiato' | 'sospeso';
   cortesia?: { titolo: string; testo: string; nota?: string | null };
+  /** Il negozio lo accende il control plane. Assente su un backend vecchio. */
+  negozio?: { attivo: boolean };
   theme: Record<string, unknown>;
   seo_defaults: SeoDiSito;
   og_config: Record<string, unknown>;
@@ -219,7 +221,7 @@ export async function immagineOpenGraphSito(): Promise<ArrayBuffer> {
 
 export async function immagineOpenGraph(
   slug: string,
-  tipo: 'pagina' | 'articolo' = 'pagina'
+  tipo: 'pagina' | 'articolo' | 'prodotto' = 'pagina'
 ): Promise<ArrayBuffer> {
   if (!TOKEN) throw new Error('SLIMCMS_API_TOKEN non impostato.');
 
@@ -299,10 +301,9 @@ export async function elencoMedia(): Promise<{ origine: string; percorso: string
     }
   };
 
-  // Pagine E articoli: un articolo ha la copertina e puo' avere blocchi con
-  // immagini. Camminare solo le pagine lascerebbe quelle degli articoli a
-  // puntare a file mai scaricati — riquadri rotti su ogni articolo.
-  cammina(await Promise.all([elencoPagine(), elencoArticoli()]));
+  // Pagine, articoli E prodotti: ognuno porta le sue immagini, e camminarne
+  // solo una parte lascerebbe le altre a puntare a file mai scaricati.
+  cammina(await Promise.all([elencoPagine(), elencoArticoli(), elencoProdotti()]));
 
   return [...trovati.values()];
 }
@@ -373,6 +374,34 @@ export async function elencoArticoli(): Promise<Articolo[]> {
   }
 
   return tutti;
+}
+
+export interface Prodotto {
+  id: number;
+  nome: string;
+  slug: string;
+  descrizione: string | null;
+  /** In centesimi, IVA inclusa. */
+  prezzo: number;
+  prezzo_barrato: number | null;
+  valuta: 'EUR';
+  /** Si o no, mai il numero di pezzi: non e' un dato pubblico. */
+  disponibile: boolean;
+  immagini: Media[];
+  blocks: Blocco[];
+  updated_at: string | null;
+  seo: Pagina['seo'];
+  geo: { structured_summary: string | null; key_facts: string[] };
+  aeo: Pagina['aeo'];
+}
+
+/**
+ * I prodotti pubblicati. Vuoto a negozio spento: il backend risponde con un
+ * elenco vuoto e la build semplicemente non genera schede.
+ */
+export async function elencoProdotti(): Promise<Prodotto[]> {
+  const { data } = await chiama<{ data: Prodotto[] }>('/prodotti');
+  return data;
 }
 
 export async function elencoPagine(): Promise<Pagina[]> {

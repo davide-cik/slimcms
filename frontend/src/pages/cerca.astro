@@ -151,10 +151,12 @@ const documento: Documento = {
             a.textContent = voce.titolo;
             li.appendChild(a);
 
-            if (voce.tipo === 'articolo') {
+            // Pagine senza etichetta: sono il caso normale. Articoli e
+            // prodotti la portano, perche' chi cerca vuole sapere cosa apre.
+            if (voce.tipo === 'articolo' || voce.tipo === 'prodotto') {
               var tag = document.createElement('span');
               tag.className = 'tipo';
-              tag.textContent = 'articolo';
+              tag.textContent = voce.tipo;
               li.appendChild(tag);
             }
 

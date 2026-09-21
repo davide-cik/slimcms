@@ -3,8 +3,9 @@ import Base, { type Documento } from '../layouts/Base.astro';
 import ContenutoPagina from '../components/ContenutoPagina.astro';
 import ContenutoArticolo from '../components/blog/ContenutoArticolo.astro';
 import IndiceBlog from '../components/blog/IndiceBlog.astro';
-import { elencoArticoli, elencoPagine, sito, type Articolo, type Pagina, type Sito, type Termine } from '../lib/api';
-import { grafoArchivioJsonLd, grafoArticoloJsonLd, grafoJsonLd } from '../lib/jsonld';
+import ContenutoProdotto from '../components/negozio/ContenutoProdotto.astro';
+import { elencoArticoli, elencoPagine, elencoProdotti, sito, type Articolo, type Pagina, type Prodotto, type Sito, type Termine } from '../lib/api';
+import { grafoArchivioJsonLd, grafoArticoloJsonLd, grafoJsonLd, grafoProdottoJsonLd } from '../lib/jsonld';
 
 /**
  * Tutte le URL del sito, generate staticamente dai dati dell'API in fase di
@@ -19,7 +20,12 @@ import { grafoArchivioJsonLd, grafoArticoloJsonLd, grafoJsonLd } from '../lib/js
 export async function getStaticPaths() {
   // Il sito si legge UNA volta: e' lo stesso per ogni URL, e rileggerlo per
   // pagina sarebbe una chiamata sprecata per nulla.
-  const [pagine, articoli, s] = await Promise.all([elencoPagine(), elencoArticoli(), sito()]);
+  const [pagine, articoli, prodotti, s] = await Promise.all([
+    elencoPagine(),
+    elencoArticoli(),
+    elencoProdotti(),
+    sito(),
+  ]);
   const base = s.base_blog;
 
   // Un backend piu' vecchio del frontend non espone base_blog, e senza questo
@@ -82,17 +88,28 @@ export async function getStaticPaths() {
     }
   }
 
+  // Le schede prodotto. Il segmento e' fisso: a differenza del blog, nessun
+  // cliente ha ancora chiesto di cambiarlo, e farlo dopo e' una modifica
+  // locale. A negozio spento l'elenco arriva vuoto.
+  for (const prodotto of prodotti) {
+    voci.push({
+      params: { percorso: `prodotti/${prodotto.slug}` },
+      props: { tipo: 'prodotto', prodotto, sito: s },
+    });
+  }
+
   return voci;
 }
 
 const props = Astro.props as {
-  tipo: 'pagina' | 'indice' | 'articolo' | 'archivio';
+  tipo: 'pagina' | 'indice' | 'articolo' | 'archivio' | 'prodotto';
   sito: Sito;
   pagina?: Pagina;
   articolo?: Articolo;
   articoli?: Articolo[];
   archivio?: 'categoria' | 'tag';
   termine?: Termine;
+  prodotto?: Prodotto;
 };
 
 const infoSito = props.sito;
@@ -148,6 +165,21 @@ if (props.tipo === 'pagina') {
     og: `/og/articoli/${a.slug}.png`,
     jsonld: grafoArticoloJsonLd(a, dominio, base, editore),
   };
+} else if (props.tipo === 'prodotto') {
+  const p = props.prodotto!;
+  documento = {
+    percorso: `/prodotti/${p.slug}/`,
+    titolo: p.seo.meta_title,
+    descrizione: p.seo.meta_description,
+    ogTitolo: p.seo.og_title,
+    ogDescrizione: p.seo.og_description,
+    noindex: p.seo.noindex,
+    canonico: p.seo.canonical_url,
+    // Cartella propria, come gli articoli: lo stesso slug puo' esistere
+    // anche come pagina.
+    og: `/og/prodotti/${p.slug}.png`,
+    jsonld: grafoProdottoJsonLd(p, dominio, infoSito.name),
+  };
 } else if (props.tipo === 'indice') {
   documento = {
     percorso: `/${base}/`,
@@ -188,6 +220,8 @@ if (props.tipo === 'pagina') {
   )}
 
   {props.tipo === 'articolo' && <ContenutoArticolo articolo={props.articolo!} base={base} />}
+
+  {props.tipo === 'prodotto' && <ContenutoProdotto prodotto={props.prodotto!} />}
 
   {props.tipo === 'indice' && (
     <IndiceBlog

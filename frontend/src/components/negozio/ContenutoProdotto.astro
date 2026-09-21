@@ -1,0 +1,105 @@
+---
+import Blocchi from '../blocchi/Blocchi.astro';
+import { percorsoMedia, type Prodotto } from '../../lib/api';
+import { euro } from '../../lib/negozio';
+
+interface Props {
+  prodotto: Prodotto;
+}
+
+const { prodotto } = Astro.props;
+const [copertina, ...altre] = prodotto.immagini;
+---
+
+<article>
+  <header class="apertura scheda-prodotto">
+    {copertina && (
+      <figure class="prodotto-foto">
+        <img
+          src={percorsoMedia(copertina)}
+          alt={copertina.alt ?? prodotto.nome}
+          width="800"
+          height="800"
+        />
+      </figure>
+    )}
+
+    <div class="prodotto-testo">
+      <h1>{prodotto.nome}</h1>
+
+      {prodotto.descrizione && <p class="sommario">{prodotto.descrizione}</p>}
+
+      <p class="prezzo">
+        {prodotto.prezzo_barrato && <del class="prezzo-prima">{euro(prodotto.prezzo_barrato)}</del>}
+        <strong class="prezzo-ora">{euro(prodotto.prezzo)}</strong>
+        <span class="prezzo-nota">IVA inclusa</span>
+      </p>
+
+      {/* Il pulsante arriva col passo 2, insieme al carrello. */}
+      <p class={prodotto.disponibile ? 'disponibilita' : 'disponibilita disponibilita-no'}>
+        {prodotto.disponibile ? 'Disponibile' : 'Esaurito'}
+      </p>
+    </div>
+  </header>
+
+  {altre.length > 0 && (
+    <div class="prodotto-galleria">
+      {altre.map((m) => (
+        <img src={percorsoMedia(m)} alt={m.alt ?? ''} width="400" height="400" loading="lazy" />
+      ))}
+    </div>
+  )}
+
+  <Blocchi blocchi={prodotto.blocks} colonne={1} />
+</article>
+
+<style>
+  .scheda-prodotto {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+  @media (min-width: 760px) {
+    .scheda-prodotto { grid-template-columns: 1fr 1fr; }
+  }
+
+  .prodotto-foto { margin: 0; }
+  .prodotto-foto img,
+  .prodotto-galleria img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 3px;
+  }
+
+  .prodotto-testo h1 { margin-top: 0; }
+
+  .prezzo {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.8rem;
+    margin: 1.8rem 0 0;
+    font-family: var(--display);
+  }
+  .prezzo-ora { font-size: 2rem; }
+  .prezzo-prima { color: var(--inchiostro-tenue); }
+  .prezzo-nota { font-size: 0.85rem; color: var(--inchiostro-tenue); }
+
+  .disponibilita {
+    margin: 0.8rem 0 0;
+    font-family: var(--display);
+    font-size: 0.9rem;
+  }
+  .disponibilita-no { color: var(--inchiostro-tenue); }
+
+  .prodotto-galleria {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+    max-width: var(--misura);
+    margin: 2.5rem auto 0;
+    padding: 0 1.5rem;
+  }
+</style>

@@ -1,4 +1,4 @@
-import type { Articolo, Pagina, Termine } from './api';
+import { percorsoMedia, type Articolo, type Pagina, type Prodotto, type Termine } from './api';
 
 /**
  * Genera il JSON-LD dai campi che l'API restituisce, senza che il redattore
@@ -153,19 +153,58 @@ function grafoDaCampi(c: CampiGrafo) {
 
   nodi.push(pulisci(principale));
 
-  if (c.faq.length > 0) {
-    nodi.push({
+  nodi.push(...nodoFaq(c.faq));
+
+  return nodi;
+}
+
+/** Le domande frequenti come FAQPage, o niente se non ce ne sono. */
+function nodoFaq(faq: { domanda: string; risposta: string }[]): Record<string, unknown>[] {
+  if (faq.length === 0) return [];
+
+  return [
+    {
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
-      mainEntity: c.faq.map((v) => ({
+      mainEntity: faq.map((v) => ({
         '@type': 'Question',
         name: v.domanda,
         acceptedAnswer: { '@type': 'Answer', text: v.risposta },
       })),
-    });
-  }
+    },
+  ];
+}
 
-  return nodi;
+/**
+ * Il grafo di un PRODOTTO: Product con la sua Offer.
+ *
+ * Il prezzo va in decimale ("39.00"), non in centesimi: e' il formato che
+ * Schema.org e Google si aspettano. Il venditore e' il sito, non l'editore
+ * della piattaforma: chi vende e' il cliente.
+ */
+export function grafoProdottoJsonLd(p: Prodotto, dominio: string, venditore: string) {
+  const url = `https://${dominio}/prodotti/${p.slug}/`;
+
+  const prodotto = pulisci({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: p.nome,
+    description: p.geo.structured_summary ?? p.descrizione ?? p.seo.meta_description ?? undefined,
+    url,
+    image: p.immagini.length > 0
+      ? p.immagini.map((m) => `https://${dominio}${percorsoMedia(m)}`)
+      : undefined,
+    offers: {
+      '@type': 'Offer',
+      url,
+      priceCurrency: p.valuta,
+      price: (p.prezzo / 100).toFixed(2),
+      availability: p.disponibile ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      seller: { '@type': 'Organization', name: venditore },
+    },
+  });
+
+  return [prodotto, ...nodoFaq(p.aeo.faq)];
 }
 
 /** Toglie le chiavi undefined, che in JSON-LD sono rumore. */

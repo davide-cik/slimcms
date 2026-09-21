@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { elencoArticoli, elencoPagine, sito, type Articolo, type Pagina } from '../lib/api';
+import { elencoArticoli, elencoPagine, elencoProdotti, sito, type Articolo, type Pagina, type Prodotto } from '../lib/api';
 
 /**
  * L'indice di ricerca del sito, generato in build.
@@ -55,7 +55,12 @@ function testoDeiBlocchi(blocchi: unknown): string {
 const TETTO_TESTO = 1200;
 
 export const GET: APIRoute = async () => {
-  const [pagine, articoli, s] = await Promise.all([elencoPagine(), elencoArticoli(), sito()]);
+  const [pagine, articoli, prodotti, s] = await Promise.all([
+    elencoPagine(),
+    elencoArticoli(),
+    elencoProdotti(),
+    sito(),
+  ]);
 
   const voci = [
     ...pagine.map((p: Pagina) => ({
@@ -71,6 +76,13 @@ export const GET: APIRoute = async () => {
       tipo: 'articolo' as const,
       sommario: a.excerpt ?? a.geo?.structured_summary ?? a.seo?.meta_description ?? null,
       testo: testoDeiBlocchi(a.blocks).slice(0, TETTO_TESTO),
+    })),
+    ...prodotti.map((p: Prodotto) => ({
+      titolo: p.nome,
+      percorso: `/prodotti/${p.slug}/`,
+      tipo: 'prodotto' as const,
+      sommario: p.descrizione ?? p.geo?.structured_summary ?? p.seo?.meta_description ?? null,
+      testo: testoDeiBlocchi(p.blocks).slice(0, TETTO_TESTO),
     })),
   ];
 
