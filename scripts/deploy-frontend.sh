@@ -248,6 +248,21 @@ echo "    .htaccess: $(grep -c '^RewriteRule' dist/.htaccess) reindirizzamenti, 
 grep -q "<loc>" dist/sitemap.xml || errore "sitemap.xml senza nessuna URL."
 echo "    sitemap.xml: $(grep -c '<loc>' dist/sitemap.xml) URL"
 
+# Ogni scheda prodotto deve portare il suo JSON-LD Product: e' quello che fa
+# comparire prezzo e disponibilita' nei risultati di ricerca. Una scheda senza
+# e' una pagina valida, della giusta dimensione, che nei motori non vende.
+if [[ -d dist/prodotti ]]; then
+  schede=0
+  shopt -s nullglob
+  for scheda in dist/prodotti/*/index.html; do
+    grep -q '"@type":"Product"' "$scheda" \
+      || errore "$scheda non contiene il JSON-LD Product."
+    schede=$((schede + 1))
+  done
+  shopt -u nullglob
+  echo "    negozio: $schede schede prodotto, tutte con JSON-LD Product"
+fi
+
 # robots.txt: quello autogenerato da HestiaCP conterrebbe Crawl-delay, che su
 # un prodotto che vende visibilita' sui motori e' controproducente.
 cat > dist/robots.txt <<ROBOTS

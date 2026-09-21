@@ -263,6 +263,35 @@ anche nella **chiave di cache** del backend — senza, due contenuti omonimi agg
 stesso secondo si scambiavano l'immagine. Il gate di deploy verifica ogni `og:image`, che
 non compare come `src=` e sfuggiva al controllo delle immagini.
 
+## Negozio (SlimShop)
+
+Specifica: `docs/superpowers/specs/2026-09-21-slimshop-design.md`. Si costruisce a passi;
+il passo 1 (catalogo) è fatto.
+
+**Si accende dal control plane** (`sites.shop_attivo`, sezione «Moduli» in `/manage/sites`):
+il sito decide *come* usa il negozio, la piattaforma *se* ce l'ha. A negozio spento la voce
+«Prodotti» sparisce e la sua URL risponde 403 (`ProdottoResource::canAccess()`), l'API di
+build restituisce un elenco **vuoto** — non un 404, perché la build di ogni sito lo chiama —
+e la sitemap non elenca schede. Spegnere non cancella niente.
+
+**Gli importi sono interi in centesimi, IVA inclusa.** Il form li scrive in euro
+(«39,90») e `App\Support\Euro` è l'unico punto di conversione: il campo `numeric` di
+Filament rifiuterebbe la virgola, e un float nel database sbaglierebbe i conti.
+
+**L'API espone `disponibile`, mai `scorte`.** Quanti pezzi ha un cliente in magazzino non
+è un dato da scrivere nell'HTML di un sito pubblico; un test lo fissa.
+
+Le schede stanno in `/prodotti/<slug>/` (segmento fisso), con JSON-LD `Product` + `Offer`
+(`grafoProdottoJsonLd`, prezzo in decimale come vuole Schema.org, venditore = il sito) e
+immagine Open Graph in `/og/prodotti/`. Il gate di deploy verifica che ogni scheda porti
+il suo `Product`.
+
+Il page builder è condiviso da pagine, articoli e prodotti: i blocchi con immagini
+dichiarano `?HasMedia $record`, non `?Page`. Filament passa il record **per nome**, e con
+`?Page` una galleria dentro un articolo o un prodotto era un `TypeError`. La risoluzione
+dei blocchi per l'API sta in `RisolveBlocchi`, condiviso da `PageResource` e
+`ProdottoResource`.
+
 ## Ricerca e modulo di contatto
 
 Sono le due funzioni che le specifiche (§7.3) chiamano "dinamiche". Sono finite in due
