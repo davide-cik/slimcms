@@ -56,18 +56,21 @@ le copre da solo. **Tutti gli importi sono interi in centesimi, IVA inclusa**: c
 | `site_id` | int, indice | |
 | `slug` | string | unico su `(site_id, slug)`, via `Slug::da()` e `Slug::regolaUnica()` |
 | `nome` | string | |
-| `descrizione` | text | testo ricco |
+| `descrizione` | text | breve, testo semplice: elenchi, og, JSON-LD |
+| `blocks` | JSON | il corpo della pagina prodotto, lo stesso builder di pagine e articoli |
 | `status` | string | enum di `Page`/`Post`; pubblicare passa da `PubblicazioneRiservata` |
 | `prezzo` | unsigned int | centesimi |
 | `prezzo_barrato` | unsigned int, null | mostrato barrato sopra `prezzo`; deve essere > `prezzo` |
 | `scorte` | unsigned int | non scende mai sotto zero (vedi §4) |
 | `upsell_prodotto_id` | FK null → `prodotti` | stesso sito, diverso da sé |
 | `upsell_titolo`, `upsell_testo` | string/text null | testo della pagina intermedia |
-| `seo`, `structured_summary`, `key_facts`, `faq_block`, `direct_answer` | come su `Post` | JSON con cast espliciti |
+| `seo` | JSON | come su `Post`: dentro stanno anche `structured_summary`, `key_facts`, `faq_block`, `direct_answer` |
 | timestamps, soft deletes | | |
 
-Immagini: collezione media `immagini` sul prodotto; la prima è la copertina. I blocchi e le
-pagine le risolvono come le altre immagini: in build diventano file del sito.
+Immagini: collezione media `immagini` sul prodotto, caricata fuori dal builder come sulle
+pagine; la prima è la copertina e i blocchi scelgono fra queste. In build diventano file del
+sito come tutte le altre. L'API espone `disponibile` (sì/no), **non** il numero di pezzi: il
+magazzino di un cliente non è un dato pubblico.
 
 `upsell_prodotto_id` si valida **dentro il sito**: la regola `exists` interroga la tabella e
 non il modello, quindi il `where('site_id')` va messo a mano (stessa trappola di
