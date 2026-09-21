@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Page;
 use App\Models\Post;
+use App\Models\Prodotto;
 use App\Models\Site;
 use App\Services\BuildQueue;
 use Illuminate\Database\Eloquent\Model;
@@ -11,9 +12,9 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Accoda una rigenerazione quando un contenuto cambia.
  *
- * Osserva Page e Post. Non fa nulla per le bozze che restano bozze: una
- * pagina mai pubblicata non esiste nel sito statico, rigenerarlo sarebbe
- * lavoro sprecato a ogni salvataggio automatico dell'editor.
+ * Osserva Page, Post e Prodotto. Non fa nulla per le bozze che restano
+ * bozze: una pagina mai pubblicata non esiste nel sito statico, rigenerarlo
+ * sarebbe lavoro sprecato a ogni salvataggio automatico dell'editor.
  */
 class ContenutoObserver
 {
@@ -66,6 +67,10 @@ class ContenutoObserver
 
         if ($model instanceof Page) {
             return $model->is_home ? '/' : '/' . $model->slug;
+        }
+
+        if ($model instanceof Prodotto) {
+            return '/prodotti/' . $model->slug;
         }
 
         return '/';

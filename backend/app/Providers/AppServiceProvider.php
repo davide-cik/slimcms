@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
 use App\Models\Page;
 use App\Models\Post;
+use App\Models\Prodotto;
 use App\Models\Site;
 use App\Observers\ContenutoObserver;
 use App\Observers\SiteObserver;
@@ -35,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         // Accodano le rigenerazioni statiche quando cambia un contenuto.
         Page::observe(ContenutoObserver::class);
         Post::observe(ContenutoObserver::class);
+        Prodotto::observe(ContenutoObserver::class);
         Site::observe(SiteObserver::class);
 
         // Il registro degli accessi ai due pannelli. Sugli eventi del
