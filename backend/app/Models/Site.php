@@ -35,6 +35,7 @@ class Site extends Model implements HasMedia
         'logo_path',
         'stato',
         'nota_cortesia',
+        'shop_attivo',
         'contact_email',
         'captcha_fornitore',
         'captcha_chiave_pubblica',
@@ -71,6 +72,7 @@ class Site extends Model implements HasMedia
             // punto in cui e' facile dimenticarsene.
             'ssl_expires_at' => 'datetime',
             'ssl_checked_at' => 'datetime',
+            'shop_attivo' => 'boolean',
         ];
     }
 
@@ -205,6 +207,15 @@ class Site extends Model implements HasMedia
         app()->instance('currentSite', $this);
 
         return $this;
+    }
+
+    /**
+     * Il negozio e' acceso? L'unico punto in cui lo si chiede: pannello,
+     * API e sitemap passano tutti da qui.
+     */
+    public function negozioAttivo(): bool
+    {
+        return (bool) $this->shop_attivo;
     }
 
     /**

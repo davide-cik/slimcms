@@ -16,6 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -139,6 +140,16 @@ class SiteResource extends Resource
                         // cliente, e la pagina e' pubblica.
                         ->helperText('Facoltativa, e visibile a chiunque: non scriverci il motivo.'),
                 ])->columns(1),
+
+            Section::make('Moduli')
+                ->description('Le funzioni in piu\' che il sito puo\' usare. Si accendono da qui, '
+                    . 'si configurano dal pannello del sito.')
+                ->schema([
+                    Toggle::make('shop_attivo')
+                        ->label('Negozio')
+                        ->helperText('Prodotti, carrello e pagamenti. Spegnerlo non cancella niente: '
+                            . 'prodotti e ordini restano, e il sito smette di mostrarli alla build successiva.'),
+                ]),
 
             Section::make('Stato del dominio')
                 ->visibleOn('edit')

@@ -133,8 +133,28 @@ class CicloDiVitaSitoTest extends TestCase
             ->filter()
             ->all();
 
-        foreach (['tenant_id', 'domain'] as $atteso) {
+        foreach (['tenant_id', 'domain', 'shop_attivo'] as $atteso) {
             $this->assertContains($atteso, $nomi, "«{$atteso}» deve restare nel control plane.");
         }
+    }
+
+    /**
+     * Il negozio si accende da qui e non dal pannello del sito: cosa il sito
+     * *puo'* fare lo decide la piattaforma, come lo usa chi lo abita.
+     */
+    public function test_il_negozio_si_accende_dal_control_plane(): void
+    {
+        $sito = Site::withoutTenancy()->create([
+            'tenant_id' => $this->tenant->id, 'domain' => 'c.test', 'name' => 'C',
+        ]);
+
+        $this->assertFalse($sito->negozioAttivo(), 'Un sito nuovo nasce senza negozio.');
+
+        Livewire::test(EditSite::class, ['record' => $sito->getRouteKey()])
+            ->fillForm(['shop_attivo' => true])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($sito->refresh()->negozioAttivo());
     }
 }

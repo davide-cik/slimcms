@@ -49,6 +49,12 @@ class SiteResource extends JsonResource
             // Come disegnare il captcha. Solo la parte pubblica: il segreto
             // resta nel backend, che e' l'unico posto in cui serve.
             'captcha' => \App\Support\Captcha\FabbricaCaptcha::per($this->resource)->perIlSito(),
+
+            // Se il sito vende. La build lo usa per sapere se aspettarsi
+            // prodotti; i prodotti stessi arrivano da /prodotti.
+            'negozio' => [
+                'attivo' => $this->negozioAttivo(),
+            ],
         ];
     }
 }
