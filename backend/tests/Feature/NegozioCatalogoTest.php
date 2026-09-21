@@ -3,8 +3,14 @@
 namespace Tests\Feature;
 
 use App\Enums\Ruolo;
+use App\Filament\Resources\Posts\Pages\EditPost;
+use App\Filament\Resources\Prodotti\Pages\CreateProdotto;
+use App\Filament\Resources\Prodotti\Pages\EditProdotto;
+use App\Filament\Resources\Prodotti\Pages\ListProdotti;
+use App\Filament\Resources\Prodotti\ProdottoResource;
 use App\Models\BuildRequest;
 use App\Models\Plan;
+use App\Models\Post;
 use App\Models\Prodotto;
 use App\Models\Site;
 use App\Models\Tenant;
@@ -12,6 +18,7 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -132,5 +139,118 @@ class NegozioCatalogoTest extends TestCase
         $this->prodotto(['status' => 'draft']);
 
         $this->assertSame(0, BuildRequest::query()->where('site_id', $this->sito->id)->count());
+    }
+
+    public function test_un_autore_crea_un_prodotto_in_bozza(): void
+    {
+        $this->entraCome(Ruolo::Author);
+
+        Livewire::test(CreateProdotto::class)
+            ->fillForm([
+                'nome' => 'Kit da tre',
+                'slug' => 'kit-da-tre',
+                'prezzo' => '99,00',
+                'prezzo_barrato' => '117',
+                'scorte' => 5,
+                'status' => 'draft',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $p = Prodotto::query()->where('slug', 'kit-da-tre')->sole();
+
+        $this->assertSame(9900, $p->prezzo);
+        $this->assertSame(11700, $p->prezzo_barrato);
+        $this->assertSame('draft', $p->status);
+    }
+
+    public function test_il_prezzo_barrato_deve_superare_il_prezzo(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+
+        Livewire::test(CreateProdotto::class)
+            ->fillForm(['nome' => 'X', 'slug' => 'x', 'prezzo' => '39', 'prezzo_barrato' => '30', 'scorte' => 1])
+            ->call('create')
+            ->assertHasFormErrors(['prezzo_barrato']);
+    }
+
+    public function test_un_importo_illeggibile_e_un_errore_nel_campo(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+
+        Livewire::test(CreateProdotto::class)
+            ->fillForm(['nome' => 'X', 'slug' => 'x', 'prezzo' => 'trenta', 'scorte' => 1])
+            ->call('create')
+            ->assertHasFormErrors(['prezzo']);
+    }
+
+    public function test_il_form_mostra_il_prezzo_in_euro(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+        $p = $this->prodotto();
+
+        Livewire::test(EditProdotto::class, ['record' => $p->getRouteKey()])
+            ->assertSchemaStateSet(['prezzo' => '39,00']);
+    }
+
+    public function test_a_negozio_spento_i_prodotti_non_si_aprono(): void
+    {
+        $admin = $this->entraCome(Ruolo::Admin);
+        // Un admin su un sito deve avere l'MFA attiva (CLAUDE.md): senza,
+        // la richiesta vera viene intercettata prima da
+        // RichiediMfaSoloAgliAdmin, che rimanda alla pagina di
+        // configurazione. Qui si vuole verificare il 403 del negozio
+        // spento, non quel middleware, quindi l'MFA si attiva a mano.
+        $admin->saveAppAuthenticationSecret('SECRETSECRETSECRETSECR');
+
+        $this->sito->forceFill(['shop_attivo' => false])->save();
+
+        $this->assertFalse(ProdottoResource::canAccess());
+        $this->get(ProdottoResource::getUrl('index', tenant: $this->sito))->assertForbidden();
+
+        // Controllo positivo: un 403 qualunque non basta a dimostrare che sia
+        // il negozio spento la causa. Riacceso, la stessa URL deve aprirsi.
+        // La richiesta appena fatta ha risolto il tenant dalla URL e
+        // sostituito quello nel container con un'istanza congelata allo
+        // stato di allora: va riallineato, come in setUp, prima di chiedere
+        // di nuovo a Filament::getTenant().
+        $this->sito->forceFill(['shop_attivo' => true])->save();
+        Filament::setTenant($this->sito, isQuiet: true);
+
+        $this->assertTrue(ProdottoResource::canAccess());
+        $this->get(ProdottoResource::getUrl('index', tenant: $this->sito))->assertOk();
+    }
+
+    /**
+     * L'elenco e' la prima pagina che si apre, e le sue colonne hanno
+     * chiusure tipizzate (`fn (int $state)`, `fn (string $state)`): un
+     * prodotto con prezzo_barrato o descrizione a NULL non le farebbe
+     * fallire (sono facoltativi e non compaiono in tabella), ma se una
+     * colonna futura leggesse un campo nullable senza controllarlo qui e'
+     * dove si scoprirebbe.
+     */
+    public function test_l_elenco_dei_prodotti_si_apre(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+        $this->prodotto();
+
+        Livewire::test(ListProdotti::class)->assertOk();
+    }
+
+    /**
+     * Il builder e' condiviso da pagine, articoli e prodotti. I suoi blocchi
+     * con immagini dichiaravano `?Page $record`: su un altro modello Filament
+     * passa comunque il record per nome, e PHP alza un TypeError.
+     */
+    public function test_una_galleria_si_apre_anche_fuori_dalle_pagine(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+        $galleria = [['type' => 'galleria', 'data' => ['titolo' => 'Foto', 'media' => []]]];
+
+        $p = $this->prodotto(['blocks' => $galleria]);
+        Livewire::test(EditProdotto::class, ['record' => $p->getRouteKey()])->assertOk();
+
+        $post = Post::create(['title' => 'A', 'slug' => 'a', 'status' => 'draft', 'blocks' => $galleria]);
+        Livewire::test(EditPost::class, ['record' => $post->getRouteKey()])->assertOk();
     }
 }

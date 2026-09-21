@@ -19,6 +19,7 @@ use Filament\Schemas\Schema;
 use App\Models\Page;
 use App\Support\PerSito;
 use App\Support\Slug;
+use Spatie\MediaLibrary\HasMedia;
 
 /**
  * Form di redazione di una pagina.
@@ -280,8 +281,8 @@ class PageForm
                         Select::make('media')
                             ->label('Immagini')
                             ->multiple()
-                            ->options(fn (?Page $record): array => self::immaginiDisponibili($record))
-                            ->helperText(fn (?Page $record): string => self::immaginiDisponibili($record) === []
+                            ->options(fn (?HasMedia $record): array => self::immaginiDisponibili($record))
+                            ->helperText(fn (?HasMedia $record): string => self::immaginiDisponibili($record) === []
                                 ? 'Nessuna immagine sulla pagina: caricane in "Immagini della pagina" qui sopra.'
                                 : 'Scelte fra quelle caricate in "Immagini della pagina". L\'ordine e\' quello in cui le selezioni.'),
                     ]),
@@ -326,7 +327,7 @@ class PageForm
                     ->schema([
                         Select::make('media')
                             ->label('Immagine')
-                            ->options(fn (?Page $record): array => self::immaginiDisponibili($record))
+                            ->options(fn (?HasMedia $record): array => self::immaginiDisponibili($record))
                             ->helperText('Fra quelle caricate in "Immagini della pagina".'),
                         Select::make('posizione')
                             ->label('Immagine a')
@@ -371,7 +372,7 @@ class PageForm
                         Select::make('media')
                             ->label('Loghi')
                             ->multiple()
-                            ->options(fn (?Page $record): array => self::immaginiDisponibili($record))
+                            ->options(fn (?HasMedia $record): array => self::immaginiDisponibili($record))
                             ->helperText('Fra le immagini della pagina. Il nome dell\'azienda va nel testo alternativo del file.'),
                     ]),
 
@@ -489,7 +490,7 @@ class PageForm
      *
      * @return array<string, string>
      */
-    private static function immaginiDisponibili(?Page $record): array
+    private static function immaginiDisponibili(?HasMedia $record): array
     {
         if ($record === null) {
             return [];
