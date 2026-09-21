@@ -169,7 +169,11 @@ const anonimizza = sito?.seo_defaults?.analytics?.anonimizza !== false;
     {verifiche.bing && <meta name="msvalidate.01" content={verifiche.bing} />}
     {verifiche.yandex && <meta name="yandex-verification" content={verifiche.yandex} />}
 
-    {grafo.map((n) => <script type="application/ld+json" set:html={JSON.stringify(n)} />)}
+    {/* Un `<` dentro un titolo (es. un nome prodotto con "</script>") chiude
+        il tag prima della fine del JSON e il resto finisce nell'HTML della
+        pagina pubblica. < e' identico a `<` per un parser JSON, quindi
+        il dato resta invariato: cambia solo come il browser lo legge. */}
+    {grafo.map((n) => <script type="application/ld+json" set:html={JSON.stringify(n).replace(/</g, '\\u003c')} />)}
 
     {/* Analytics: scritto solo se il sito ne ha uno configurato. Un sito
         senza statistiche non deve pagare nessuna richiesta in piu'. */}

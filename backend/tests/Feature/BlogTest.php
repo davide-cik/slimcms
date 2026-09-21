@@ -76,6 +76,18 @@ class BlogTest extends TestCase
         }
     }
 
+    /**
+     * "prodotti" e' il segmento delle schede prodotto (/prodotti/<slug>/):
+     * se il blog vi si potesse installare, un articolo e una scheda
+     * finirebbero a contendersi lo stesso indirizzo.
+     */
+    public function test_un_segmento_riservato_al_negozio_ricade_sul_default(): void
+    {
+        $this->sito->forceFill(['layout_config' => ['blog' => ['base' => 'prodotti']]])->saveQuietly();
+
+        $this->assertSame('blog', $this->sito->fresh()->baseBlog());
+    }
+
     public function test_la_sitemap_elenca_articoli_indice_e_archivi(): void
     {
         $categoria = Category::create(['name' => 'Dietro le quinte', 'slug' => 'dietro-le-quinte']);

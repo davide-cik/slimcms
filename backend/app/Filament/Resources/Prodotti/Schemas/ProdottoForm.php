@@ -71,6 +71,15 @@ class ProdottoForm
                         ->label('Pezzi in magazzino')
                         ->integer()
                         ->minValue(0)
+                        // La colonna e' un unsignedInteger: sopra questo
+                        // tetto la riga non entrerebbe nel database e
+                        // MariaDB risponderebbe con un 500 al posto di un
+                        // errore nel campo. E' lo stesso massimo di
+                        // Euro::MASSIMO_CENTESIMI per coincidenza di tipo
+                        // (entrambe le colonne sono unsignedInteger), non
+                        // per significato: qui non sono centesimi ma pezzi,
+                        // quindi il numero resta esplicito.
+                        ->maxValue(4294967295)
                         ->default(0)
                         ->required()
                         ->helperText('A zero la scheda mostra «esaurito».'),

@@ -84,13 +84,25 @@ class Site extends Model implements HasMedia
      * Astro. Tre copie della stessa stringa e' esattamente la giuntura che in
      * questo progetto ha gia' prodotto piu' di un guasto.
      */
+    /**
+     * Segmenti che il blog non puo' usare perche' appartengono gia' a
+     * un'altra area del sito. Per ora solo "prodotti": e' la radice delle
+     * schede del negozio (/prodotti/<slug>/), e un articolo li' sopra si
+     * contenderebbe l'indirizzo con una scheda prodotto.
+     */
+    private const SEGMENTI_RISERVATI = ['prodotti'];
+
     public function baseBlog(): string
     {
         $base = trim((string) ($this->layout_config['blog']['base'] ?? 'blog'), '/');
 
         // Un valore vuoto o assurdo metterebbe gli articoli sulla radice, dove
         // si scontrerebbero con gli slug delle pagine.
-        return preg_match('/^[a-z0-9-]{1,40}$/', $base) === 1 ? $base : 'blog';
+        if (preg_match('/^[a-z0-9-]{1,40}$/', $base) !== 1) {
+            return 'blog';
+        }
+
+        return in_array($base, self::SEGMENTI_RISERVATI, true) ? 'blog' : $base;
     }
 
     /**

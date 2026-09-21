@@ -105,6 +105,31 @@ class ConfigurazioneSitoTest extends TestCase
         ]));
     }
 
+    /**
+     * Il verso negativo del confine (vedi CicloDiVitaSitoTest): non solo
+     * "il ciclo di vita del sito sta nel control plane", ma anche "il
+     * negozio non si accende da qui". `shop_attivo` e' fillable: se
+     * finisse per sbaglio in questo form, un admin del pannello del sito
+     * potrebbe accendersi il negozio da solo, cosa che spetta a chi crea
+     * il sito, non a chi lo abita. Sta qui e non in CicloDiVitaSitoTest
+     * perche' quel test autentica un AdminUser sulla guardia `manage`, e
+     * qui serve invece un admin del sito sulla guardia `web` — il setup
+     * gia' pronto in questa classe.
+     */
+    public function test_shop_attivo_non_e_nel_pannello_del_sito(): void
+    {
+        $nomi = collect(Livewire::test(ImpostazioniSito::class)
+            ->instance()->form->getFlatComponents(withHidden: true))
+            ->map(fn ($c) => method_exists($c, 'getName') ? $c->getName() : null)
+            ->filter()
+            ->all();
+
+        $trovati = array_values(array_filter($nomi, fn ($n) => str_starts_with((string) $n, 'shop_attivo')));
+
+        $this->assertSame([], $trovati, '«shop_attivo» e\' comparso nel pannello del sito: '
+            . 'accendere il negozio spetta al control plane, non a chi abita il sito.');
+    }
+
     public function test_la_testata_si_configura_dal_pannello(): void
     {
         $this->modifica([

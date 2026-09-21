@@ -200,6 +200,21 @@ class NegozioCatalogoTest extends TestCase
     }
 
     /**
+     * `scorte` e' un unsignedInteger: sopra 4294967295 la riga non entrerebbe
+     * nel database e MariaDB risponderebbe con un 500 al posto di un errore
+     * nel campo.
+     */
+    public function test_le_scorte_sopra_il_massimo_sono_un_errore_nel_campo(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+
+        Livewire::test(CreateProdotto::class)
+            ->fillForm(['nome' => 'X', 'slug' => 'x', 'prezzo' => '10', 'scorte' => 5000000000])
+            ->call('create')
+            ->assertHasFormErrors(['scorte']);
+    }
+
+    /**
      * Senza virgola, un punto a gruppi di tre cifre e' le migliaia:
      * "1.500" e' millecinquecento euro, non uno virgola cinque.
      */
@@ -250,6 +265,33 @@ class NegozioCatalogoTest extends TestCase
 
         $this->assertTrue(ProdottoResource::canAccess());
         $this->get(ProdottoResource::getUrl('index', tenant: $this->sito))->assertOk();
+    }
+
+    /**
+     * `ProdottoResource::canAccess()` nasconde la voce di menu, ma non e' un
+     * controllo: un `createOptionForm`, un relation manager o un `Select` di
+     * upsell chiedono direttamente alla policy, scavalcando la risorsa. La
+     * policy stessa deve negare a negozio spento, non solo la risorsa.
+     */
+    public function test_la_policy_nega_tutto_a_negozio_spento(): void
+    {
+        $admin = $this->entraCome(Ruolo::Admin);
+        $admin->saveAppAuthenticationSecret('SECRETSECRETSECRETSECR');
+        $prodotto = $this->prodotto();
+
+        $this->sito->forceFill(['shop_attivo' => false])->save();
+        Filament::setTenant($this->sito, isQuiet: true);
+
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($admin)->allows('viewAny', Prodotto::class));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($admin)->allows('create', Prodotto::class));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($admin)->allows('update', $prodotto));
+
+        $this->sito->forceFill(['shop_attivo' => true])->save();
+        Filament::setTenant($this->sito, isQuiet: true);
+
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::forUser($admin)->allows('viewAny', Prodotto::class));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::forUser($admin)->allows('create', Prodotto::class));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::forUser($admin)->allows('update', $prodotto));
     }
 
     /**
