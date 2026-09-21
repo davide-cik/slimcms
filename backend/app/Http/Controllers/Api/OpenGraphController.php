@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\Post;
+use App\Models\Prodotto;
 use App\Models\Site;
 use App\Services\GeneratoreOpenGraph;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class OpenGraphController extends Controller
 
     public function __construct(private readonly GeneratoreOpenGraph $generatore) {}
 
-    /** Immagine di una pagina o di un articolo. */
+    /** Immagine di una pagina, di un articolo o di un prodotto. */
     public function contenuto(Request $request, Site $site, string $slug): Response
     {
         // Lo stesso slug puo' esistere come pagina E come articolo: senza il
@@ -33,6 +34,7 @@ class OpenGraphController extends Controller
         // pagina vincerebbe sempre.
         $contenuto = match ($request->string('tipo')->toString()) {
             'articolo' => Post::where('slug', $slug)->first(),
+            'prodotto' => Prodotto::where('slug', $slug)->first(),
             'pagina' => Page::where('slug', $slug)->first(),
             default => Page::where('slug', $slug)->first() ?? Post::where('slug', $slug)->first(),
         };
@@ -40,14 +42,19 @@ class OpenGraphController extends Controller
         // Uno slug inesistente non e' un errore da mostrare al mondo: si
         // ricade sull'immagine del sito, cosi' un link vecchio conserva
         // comunque un'anteprima decorosa invece di romperla.
-        $titolo = $contenuto->title ?? $site->name ?? $site->domain;
+        // Un prodotto ha un nome, non un titolo.
+        $titolo = $contenuto?->title ?? $contenuto?->nome ?? $site->name ?? $site->domain;
         $marcatore = $contenuto?->updated_at?->timestamp ?? 0;
 
         // Il tipo entra nella chiave di cache, non solo nella query: uno slug
         // puo' esistere in entrambe le tabelle, e con la sola coppia
         // slug+timestamp due contenuti creati nello stesso secondo si
         // scambiavano l'immagine. Trovato da un test, non da un cliente.
-        $chiave = ($contenuto instanceof Post ? 'articolo' : 'pagina') . ':' . $slug;
+        $chiave = match (true) {
+            $contenuto instanceof Post => 'articolo',
+            $contenuto instanceof Prodotto => 'prodotto',
+            default => 'pagina',
+        } . ':' . $slug;
 
         return $this->rispondi($site, $titolo, $chiave, $marcatore, $request->boolean('ritaglio'));
     }

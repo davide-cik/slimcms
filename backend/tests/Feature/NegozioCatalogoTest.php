@@ -18,6 +18,7 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -282,5 +283,79 @@ class NegozioCatalogoTest extends TestCase
 
         $post = Post::create(['title' => 'A', 'slug' => 'a', 'status' => 'draft', 'blocks' => $galleria]);
         Livewire::test(EditPost::class, ['record' => $post->getRouteKey()])->assertOk();
+    }
+
+    private function api(string $percorso): \Illuminate\Testing\TestResponse
+    {
+        $utente = $this->entraCome(Ruolo::Editor);
+        Sanctum::actingAs($utente, ["site:{$this->sito->id}"]);
+
+        return $this->getJson("/api/sites/{$this->sito->domain}{$percorso}");
+    }
+
+    public function test_l_api_consegna_i_prodotti_pubblicati(): void
+    {
+        $this->prodotto(['prezzo_barrato' => 4500]);
+        $this->prodotto(['slug' => 'bozza', 'status' => 'draft']);
+
+        $dati = $this->api('/prodotti')->assertOk()->json('data');
+
+        $this->assertCount(1, $dati);
+        $this->assertSame('mazzo', $dati[0]['slug']);
+        $this->assertSame(3900, $dati[0]['prezzo']);
+        $this->assertSame(4500, $dati[0]['prezzo_barrato']);
+        $this->assertSame('EUR', $dati[0]['valuta']);
+        $this->assertTrue($dati[0]['disponibile']);
+        $this->assertSame('Product', $dati[0]['aeo']['schema_type']);
+    }
+
+    /** Il magazzino di un cliente non e' un dato pubblico. */
+    public function test_l_api_non_rivela_quanti_pezzi_ci_sono(): void
+    {
+        $this->prodotto(['scorte' => 7]);
+
+        $dati = $this->api('/prodotti/mazzo')->assertOk()->json('data');
+
+        $this->assertArrayNotHasKey('scorte', $dati);
+        $this->assertStringNotContainsString('"scorte"', json_encode($dati));
+    }
+
+    public function test_un_prezzo_barrato_non_piu_alto_non_esce(): void
+    {
+        // Il form lo impedisce; se un dato storto arriva lo stesso nel
+        // database, il sito non deve mostrare "prima 30 €, ora 39 €".
+        $this->prodotto(['prezzo_barrato' => 3000]);
+
+        $this->assertNull($this->api('/prodotti/mazzo')->json('data.prezzo_barrato'));
+    }
+
+    public function test_a_negozio_spento_l_elenco_e_vuoto_e_il_dettaglio_404(): void
+    {
+        $this->prodotto();
+        $this->sito->forceFill(['shop_attivo' => false])->save();
+
+        $this->assertSame([], $this->api('/prodotti')->assertOk()->json('data'));
+        $this->api('/prodotti/mazzo')->assertNotFound();
+    }
+
+    public function test_i_prodotti_entrano_nella_sitemap_solo_a_negozio_acceso(): void
+    {
+        $this->prodotto();
+        $url = 'https://c.test/prodotti/mazzo/';
+
+        $this->assertContains($url, array_column($this->api('/sitemap')->json('urls'), 'loc'));
+
+        $this->sito->forceFill(['shop_attivo' => false])->save();
+
+        $this->assertNotContains($url, array_column($this->api('/sitemap')->json('urls'), 'loc'));
+    }
+
+    public function test_un_prodotto_ha_la_sua_immagine_open_graph(): void
+    {
+        $this->prodotto();
+
+        $this->api('/og/mazzo.png?tipo=prodotto')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
     }
 }

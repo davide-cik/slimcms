@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\FaviconController;
 use App\Http\Controllers\Api\OpenGraphController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\SitePageController;
+use App\Http\Controllers\Api\SiteProdottoController;
 use App\Http\Controllers\Api\SiteRedirectController;
 use App\Http\Controllers\Api\SiteSitemapController;
 use App\Http\Controllers\Api\SitePostController;
@@ -40,6 +41,8 @@ Route::prefix('sites/{site}')
         Route::get('pages/{slug}', [SitePageController::class, 'show']);
         Route::get('posts', [SitePostController::class, 'index']);
         Route::get('posts/{slug}', [SitePostController::class, 'show']);
+        Route::get('prodotti', [SiteProdottoController::class, 'index']);
+        Route::get('prodotti/{slug}', [SiteProdottoController::class, 'show']);
         Route::get('sitemap', SiteSitemapController::class);
 
         // Il .htaccess gia' compilato, non le righe grezze: la regola di come

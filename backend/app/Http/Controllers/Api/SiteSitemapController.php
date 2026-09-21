@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Page;
 use App\Models\Post;
+use App\Models\Prodotto;
 use App\Models\Site;
 use App\Models\Tag;
 
@@ -31,6 +32,7 @@ class SiteSitemapController extends Controller
         $urls = $this->pagine($base)
             ->concat($this->articoli($base, $blog))
             ->concat($this->archivi($base, $blog))
+            ->concat($this->prodotti($base, $site))
             ->values();
 
         return [
@@ -109,5 +111,22 @@ class SiteSitemapController extends Controller
             ]);
 
         return $categorie->concat($tag);
+    }
+
+    /** Le schede prodotto, solo a negozio acceso. */
+    private function prodotti(string $base, Site $site)
+    {
+        if (! $site->negozioAttivo()) {
+            return collect();
+        }
+
+        return Prodotto::query()->pubblicati()->get()
+            ->reject(fn (Prodotto $p) => (bool) ($p->seo['noindex'] ?? false))
+            ->map(fn (Prodotto $p) => [
+                'loc' => "{$base}/prodotti/{$p->slug}/",
+                'lastmod' => $p->updated_at?->toIso8601String(),
+                'changefreq' => $p->seo['sitemap_change_freq'] ?? 'weekly',
+                'priority' => $p->seo['sitemap_priority'] ?? '0.8',
+            ]);
     }
 }
