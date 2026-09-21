@@ -130,8 +130,23 @@ class ProdottoForm
             ->formatStateUsing(fn (mixed $state): ?string => is_int($state) ? Euro::daCentesimi($state) : $state)
             ->dehydrateStateUsing(fn (mixed $state): ?int => Euro::inCentesimi($state))
             ->rule(fn (): Closure => function (string $attributo, mixed $valore, Closure $fail): void {
-                if ($valore !== null && $valore !== '' && Euro::inCentesimi($valore) === null) {
+                if ($valore === null || $valore === '') {
+                    return;
+                }
+
+                $centesimi = Euro::inCentesimi($valore);
+
+                if ($centesimi === null) {
                     $fail('Scrivi un importo, per esempio 39,90.');
+
+                    return;
+                }
+
+                // La colonna e' un unsignedInteger: sopra questo tetto la
+                // riga non entrerebbe nel database e MariaDB risponderebbe
+                // con un 500 al posto di un errore nel campo.
+                if ($centesimi > Euro::MASSIMO_CENTESIMI) {
+                    $fail('L\'importo e\' troppo alto.');
                 }
             });
     }

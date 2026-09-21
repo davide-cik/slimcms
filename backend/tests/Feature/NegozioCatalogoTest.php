@@ -184,6 +184,36 @@ class NegozioCatalogoTest extends TestCase
             ->assertHasFormErrors(['prezzo']);
     }
 
+    /**
+     * La colonna e' un unsignedInteger: sopra 4294967295 centesimi la riga
+     * non entrerebbe nel database. Deve fermarsi nel campo, non in un 500.
+     */
+    public function test_un_importo_sopra_il_massimo_e_un_errore_nel_campo(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+
+        Livewire::test(CreateProdotto::class)
+            ->fillForm(['nome' => 'X', 'slug' => 'x', 'prezzo' => '50.000.000', 'scorte' => 1])
+            ->call('create')
+            ->assertHasFormErrors(['prezzo']);
+    }
+
+    /**
+     * Senza virgola, un punto a gruppi di tre cifre e' le migliaia:
+     * "1.500" e' millecinquecento euro, non uno virgola cinque.
+     */
+    public function test_il_punto_delle_migliaia_si_legge_come_tale(): void
+    {
+        $this->entraCome(Ruolo::Editor);
+
+        Livewire::test(CreateProdotto::class)
+            ->fillForm(['nome' => 'Pacchetto', 'slug' => 'pacchetto', 'prezzo' => '1.500', 'scorte' => 1])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(150000, Prodotto::query()->where('slug', 'pacchetto')->sole()->prezzo);
+    }
+
     public function test_il_form_mostra_il_prezzo_in_euro(): void
     {
         $this->entraCome(Ruolo::Editor);
